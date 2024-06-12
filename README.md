@@ -1,2 +1,2 @@
 # nvgt_tools
- bu depoda görsel olmayan game kit için kullana bileceğiniz bazı araçları bula bilirsiniz
+ In this warehouse you can find some tools that you can use for non-visual game kits.
