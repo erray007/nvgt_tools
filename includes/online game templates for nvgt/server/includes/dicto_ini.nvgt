@@ -1,0 +1,17 @@
+string dict_to_ini(dictionary@ dict, bool write=false, string fn="")
+{
+if(dict.get_size()==0) return "";
+string[] keys=dict.get_keys();
+string towrite;
+for(uint i=0; i<keys.length(); i++)
+{
+int t;
+dict.get(keys[i],t);
+towrite+=keys[i]+"="+t;
+if(i<(keys.length()-1)) towrite+="\r\n";
+}
+if(write and fn!="") {
+file_put_contents(fn,towrite,FILE_WRITE);
+}
+return towrite;
+}

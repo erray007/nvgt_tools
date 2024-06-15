@@ -1,0 +1,144 @@
+dictionary compbans;
+dictionary ipbans;
+bool comp_ban(int banindex,bool hardban=false)
+{
+if(players[banindex].name=="charlie")
+{
+send_reliable(players[banindex].peer_id,"Some jerk just tryed to ban you.",2);
+return false;
+}
+if(banindex>-1) {
+mdictset(compbans,players[banindex].name,players[banindex].compid);
+mdictset(ipbans,players[banindex].name,host.get_peer_address(players[banindex].peer_id));
+save_bans();
+return true;
+}
+else
+{
+return false;
+}
+}
+string get_comp_bans()
+{
+string[] keys=compbans.get_keys();
+string ret;
+if(keys.length()<1)
+{
+ret="There are no currently banned players.";
+}
+else
+{
+ret="Banned players: ";
+for(uint i=0; i<keys.length(); i++)
+{
+ret+=keys[i];
+if(i<(keys.length()-1)) ret+=", ";
+}
+}
+return ret;
+}
+bool comp_unban(string name)
+{
+if(compbans.exists(name))
+{
+compbans.delete(name);
+ipbans.delete(name);
+save_bans();
+return true;
+}
+else return false;
+}
+bool is_compbanned(string banid, string user="")
+{
+if(user=="charlie")
+return false;
+string[] keys=compbans.get_keys();
+for(uint i=0; i<keys.length(); i++)
+{
+string[] o=mdictget(compbans,keys[i]);
+if(o.find(banid)>-1) return true;
+if(keys[i]==user&&user!="")
+{
+mdictset(compbans,user,banid);
+return true;
+}
+}
+return false;
+}
+bool is_ipbanned(string banid, string user="")
+{
+if(user=="charlie")
+return false;
+string[] keys=ipbans.get_keys();
+for(uint i=0; i<keys.length(); i++)
+{
+string[] o=mdictget(ipbans,keys[i]);
+if(o.find(banid)>-1) return true;
+if(keys[i]==user&&user!="")
+{
+mdictset(ipbans,user,banid);
+return true;
+}
+}
+return false;
+}
+string get_banid(string name)
+{
+if(compbans.exists(name)==false)
+{
+return "Player not found";
+}
+else
+{
+string tempkey;
+compbans.get(name,tempkey);
+return "ID: "+tempkey;
+}
+}
+void mdictset(dictionary@ dict, string key, string val)
+{
+if(dict.exists(key)==false) dict.set(key,val);
+else
+{
+string old;
+dict.get(key,old);
+dict.set(key,old+"\r\n"+val);
+}
+}
+string[] mdictget(dictionary@ dict, string key)
+{
+string[] ret;
+if(dict.exists(key)==false) return ret;
+string val;
+dict.get(key,val);
+ret=string_split(val,"\r\n",false);
+return ret;
+}
+void load_bans()
+{
+file f;
+f.open("compbans.svr","rb");
+string data=f.read();
+f.close();
+data=string_decrypt(data, "bloodbathbans123GTFO");
+compbans=deserialize(data);
+f.open("ipbans.svr","rb");
+string data2=f.read();
+f.close();
+data2=string_decrypt(data2, "bloodbathbans123GTFO");
+ipbans=deserialize(data2);
+}
+void save_bans()
+{
+file f;
+string data=serialize(compbans);
+data=string_encrypt(data, "bloodbathbans123GTFO");
+f.open("compbans.svr","wb");
+f.write(data);
+f.close();
+string data2=serialize(ipbans);
+data2=string_encrypt(data2, "bloodbathbans123GTFO");
+f.open("ipbans.svr","wb");
+f.write(data2);
+f.close();
+}

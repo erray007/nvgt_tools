@@ -1,0 +1,6 @@
+string version="0.0";
+string clog=;
+file f;
+f.open("settings/changelog.txt","rb");
+clog=f.read();
+f.close();

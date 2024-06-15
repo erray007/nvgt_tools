@@ -1,0 +1,85 @@
+string get_event_message()
+{
+string r=e.message;
+if(r=="")
+{
+return "";
+}
+r=string_aes_decrypt(r, net_pass);
+return r;
+}
+
+void send_reliable_x(uint peer, string mess, uint channel, int tx, int ty, int tz)
+{
+int x=tx;
+int y=ty;
+int z=tz;
+mess=string_aes_encrypt(mess, net_pass);
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].x > x-100 and players[i].x < x+100 and players[i].y > y-100 and players[i].y < y+100 and players[i].z > z-100 and players[i].z < z+100)
+{
+host.send_reliable(players[i].peer_id, mess, channel);
+}
+}
+}
+void send_reliable(uint peer, string mess, uint channel, player@index=null)
+{
+mess=string_aes_encrypt(mess, net_pass);
+
+if(@index!=null)
+{
+int x=index.x;
+int y=index.y;
+int z=index.z;
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].x > x-25 and players[i].x < x+25 and players[i].y > y-25 and players[i].y < y+25 and players[i].z > z-25 and players[i].z < z+25 and players[i].map==index.map)
+{
+host.send_reliable(players[i].peer_id, mess, channel);
+}
+}
+}
+else
+{
+host.send_reliable(peer, mess, channel);
+}
+}
+void send_unreliable_x(uint peer, string mess, uint channel, int tx, int ty, int tz)
+{
+int x=tx;
+int y=ty;
+int z=tz;
+mess=string_aes_encrypt(mess, net_pass);
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].x > x-25 and players[i].x < x+25 and players[i].y > y-25 and players[i].y < y+25 and players[i].z > z-25 and players[i].z < z+25)
+{
+host.send_unreliable(players[i].peer_id, mess, channel);
+}
+}
+}
+void send_unreliable(uint peer, string mess, uint channel, player@index=null)
+{
+mess=string_aes_encrypt(mess, net_pass);
+host.send_unreliable(peer, mess, channel);
+}
+void send_plus(uint excluding_peer_id, string packet, int channel,bool r=true)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(excluding_peer_id!=players[i].peer_id)
+{
+if(r==true) send_reliable(players[i].peer_id,packet,channel,players[i]);
+else send_unreliable(players[i].peer_id,packet,channel,players[i]);}
+}
+}
+void adminsend(string message, int channel, bool reliable=true) {
+for(uint i=0; i<players.length(); i+=1) {
+if(players[i].is_admin()) {
+if(reliable) send_reliable(players[i].peer_id, message, channel);
+else
+send_unreliable(players[i].peer_id, message, channel);
+}
+}
+}

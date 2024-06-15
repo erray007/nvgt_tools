@@ -1,0 +1,80 @@
+timer dltimer;
+void sndcheck()
+{
+sound update;
+double per=0;
+dl_file1(webdir+"/game/list.txt","list.txt",true);
+file f;
+string hash=file_hash("list.txt", 2, false);
+file c;
+c.open("soundupdate.dat","rb");
+string hash2=c.read();
+c.close();
+if(hash!=hash2 or hash2=="")
+{
+int percent=-1;
+double l2;
+double ind;
+int perc=0;
+int number=0;
+f.open("list.txt","rb");
+string ver=f.read();
+f.close();
+string dlist;
+string r=string_decrypt(ver,"Fi#-o@`4G[?uO<J=$s'i.=C-k!~Xc4#F");
+string[] lines=string_split(ver,"\r\n",false);
+for(uint i=0; i<lines.length(); i++)
+{
+if(lines[i].is_empty()) continue;
+if(lines.length()<1) continue;
+if(!file_exists("sounds/"+lines[i]))
+{
+dlist+="\r\n"+lines[i];
+}
+}
+string[] lines2=string_split(dlist,"\r\n",false);
+if(lines2.length()>0)
+{
+dlg("there are "+lines2.length()+" new sounds available press enter to start download");
+update.load("sounds\\updating.ogg");
+update.play_looped();
+dltimer.restart();
+int i2=0;
+for (uint i2=0; i2<lines2.length(); i2++)
+{
+if(lines2[i2].is_empty()) continue;
+if(lines2.length()<1) continue;
+l2=lines2.length();
+ind=i2;
+perc=ind/l2*100.0;
+internet_request r(webdir+"/game/sounds/"+lines2[i2],"sounds/"+lines2[i2]);
+while(r.complete!=true)
+{
+wait(5);
+}
+if(perc!=percent)
+{
+percent=perc;
+}
+if(dltimer.elapsed>3000 and is_game_window_active()==true and per!=percent)
+{
+dltimer.restart();
+speak("%"+percent);
+per=percent;
+}
+else if(key_pressed(KEY_SPACE))
+{
+speak("%"+percent);
+}
+else if(key_pressed(KEY_ESCAPE))
+{
+break;
+}
+}
+}f.open("soundupdate.dat","wb");
+f.write(hash);
+f.close();
+//file_delete("list.txt");
+update.stop();
+}
+}

@@ -1,0 +1,12 @@
+void log(string name, string what)
+{
+if(directory_exists("logs")==false)
+directory_create("logs");
+file f;
+f.open("logs/"+name+".log","ab");
+f.write("\r\n"+what+" "+get_date()+", "+get_time());
+f.close();
+f.open("logs/all.log","ab");
+f.write("\r\n"+what+" "+get_date()+", "+get_time());
+f.close();
+}

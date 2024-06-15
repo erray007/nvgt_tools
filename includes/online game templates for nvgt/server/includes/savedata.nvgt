@@ -1,0 +1,135 @@
+/*savedata class.
+This class provides saving and loading data, probably used on games to save the progress.
+This class supports multiple save types.
+By default, the savedata_def type is used.
+It is however not advised to use INI for saving many data, for example in game messages, because INI is used new line and = seperater.
+*/
+enum savedatatypes
+{
+savedata_def=0,
+savedata_ini
+}
+class savedata
+{
+//Internal variables for the class.
+string key;
+string fn;
+private dictionary d;
+private int m_type=savedata_def;
+//The constructor
+savedata(string filename, string enckey="", int tt=savedata_def)
+{
+fn=filename;
+key=enckey;
+this.m_type=tt;
+}
+int get_type() property
+{
+//Returns the type number.
+return this.m_type;
+}
+//The function to load the saved data into the dictionary.
+void load()
+{
+file f;
+//fn is our previously declared filename string, so use that.
+bool suc=f.open(fn,"r");
+if(suc) d=loaddict(f.read());
+//Close the file
+f.close();
+}
+//Function to save the data into the file.
+void save()
+{
+file f;
+f.open(fn,"w");
+f.write(savedict(d));
+}
+//Function to add a value.
+void add(string name, double value)
+{
+d.set(name,value);
+}
+//Function to read a number.
+double readn(string name)
+{
+if(this.m_type==savedata_ini) return parse_float(this.read(name));
+else
+{
+double tmp;
+if(!d.get(name,tmp)) tmp=-1;
+return tmp;
+}
+}
+//Overloaded function of add to add a string.
+void add(string name, string value)
+{
+d.set(name,value);
+}
+//Function to read a string
+string read(string name)
+{
+string tmp;
+d.get(name,tmp);
+return tmp;
+}
+string[] get_keys() property
+{
+return this.d.get_keys();
+}
+bool exists(string k)
+{
+return this.d.exists(k);
+}
+void clear()
+{
+this.d.delete_all();
+}
+private dictionary loaddict(string data)
+{
+//This function loads the data to the dictionary.
+if(this.key!="") data=string_aes_decrypt(data,this.key);
+dictionary d;
+if(this.m_type==savedata_ini) d=this.inidict(data);
+else if(this.m_type==savedata_def) d=deserialize(data);
+return d;
+}
+private string savedict(dictionary@ d)
+{
+string fa;
+if(this.m_type==savedata_ini) fa=this.dictini(d);
+else if(this.m_type==savedata_def) fa=d.serialize();
+if(this.key!="") fa=string_aes_encrypt(fa,this.key);
+return fa;
+}
+private dictionary inidict(string data)
+{
+dictionary d;
+string[] lines=data.split("\r\n");
+if(lines.length()<1) return d;
+for(uint i=0;i<lines.length();i++)
+{
+int fa=lines[i].find_first("=");
+if(fa<0) continue;
+string k=lines[i].substr(0,fa);
+string val=lines[i].substr(fa+1);
+if(k!="" && val!="") d.set(k,val);
+}//i
+return d;
+}//ini dict.
+private string dictini(dictionary@ d)
+{
+string[] vals=this.keys;
+if(vals.length()<1) return"";
+string final="";
+for(uint i=0;i<vals.length();i++)
+{
+string x;
+double n;
+if(d.get(vals[i],x)) final+=vals[i]+"="+x;
+else if(d.get(vals[i],n)) final+=vals[i]+"="+n;
+if(i<vals.length()-1) final+="\r\n";
+}
+return final;
+}//dictini.
+}//end.class

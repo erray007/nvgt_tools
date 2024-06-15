@@ -1,0 +1,726 @@
+bool onwall=false,underwater=false;
+timer inpacttimer;
+#include "platform.bgt"
+string [] zones;
+string get_zone_at(int x, int y, int z)
+{
+string final;
+for(uint i=0; i<zones.length(); i++)
+{
+string[] parsed=string_split(zones[i], ":", false);
+if(parsed.length()>5)
+{
+int minx=string_to_number(parsed[0]);
+int maxx=string_to_number(parsed[1]);
+int miny=string_to_number(parsed[2]);
+int maxy=string_to_number(parsed[3]);
+int minz=string_to_number(parsed[4]);
+int maxz=string_to_number(parsed[5]);
+if(minx>x)
+{
+continue;
+}
+if(minx<=x and maxx>=x and miny<=y and maxy>=y and minz<=z and maxz>=z and parsed.length()>6)
+{
+final=parsed[6];
+}
+}
+}
+/*
+for(uint i=0; i<saatler.length(); i++)
+{
+if(saatler[i].x==round(x,0) and saatler[i].y==round(y,0) and saatler[i].z==round(z,0))
+{
+final=saatler[i].name;
+}
+}
+
+for(uint i=0; i<notes.length(); i++)
+{
+if(notes[i].x==round(x,0) and notes[i].y==round(y,0) and notes[i].z==round(z,0) and mapname==notes[i].map)
+{
+final=notes[i].name;
+}
+}
+
+for(uint i=0; i<labels.length(); i++)
+{
+if(labels[i].minx>x )
+{
+continue;
+}
+if(labels[i].minx<=x and labels[i].maxx>=x and labels[i].miny<=y and labels[i].maxy>=y and labels[i].minz<=z and labels[i].maxz>=z and labels[i].name!="" and labels[i].map==mapname)
+{
+final=labels[i].name;
+}
+}
+*/
+return final;
+}
+string[] safezones;
+void spawn_safezone(int minx,int maxx,int miny,int maxy,int minz,int maxz) {
+safezones.insert_last(minx+" "+maxx+" "+miny+" "+maxy+" "+minz+" "+maxz);
+}
+bool is_safe(int x, int y, int z)
+{
+bool final=false;
+for(uint i=0; i<safezones.length(); i++)
+{
+string[] parsed=string_split(safezones[i], " ", false);
+int minx=string_to_number(parsed[0]);
+int maxx=string_to_number(parsed[1]);
+int miny=string_to_number(parsed[2]);
+int maxy=string_to_number(parsed[3]);
+int minz=string_to_number(parsed[4]);
+int maxz=string_to_number(parsed[5]);
+if(minx>x)
+{
+continue;
+}
+if(minx<=x and maxx>=x and miny<=y and maxy>=y and minz<=z and maxz>=z)
+{
+final=true;
+}
+}
+return final;
+}
+void szcheck()
+{
+bool currentlysafe=is_safe(me.x, me.y, me.z);
+if(currentlysafe!=safe)
+{
+safe=currentlysafe;
+if(currentlysafe==true)
+{
+p.play_stationary("playersafe.ogg",false);
+send_reliable(0,"playonmap playersafe.ogg",0);
+send_reliable(0,"iamsafe",0);
+}
+else
+{
+p.play_stationary("playerunsafe.ogg",false);
+send_reliable(0,"playonmap playerunsafe.ogg",0);
+send_reliable(0,"iamnotsafe",0);
+}
+}
+}
+string linear(string[] a)
+{
+string final;
+for(uint i=0; i<a.length(); i++)
+{
+final+=(a[i]+"\r\n");
+}
+return final;
+}
+string[] delinear(string a)
+{
+return string_split(a, "\r\n", false);
+}
+void load_map(string mdata)
+{
+destroy_all_msounds();
+p.destroy_all();
+destroy_all_sources();
+mapitems.resize(0);
+d2dsupport=0;
+platforms.resize(0);
+zones.resize(0);
+if(disable_camera)
+{
+disable_camera=false;
+}
+if(disable_jump)
+{
+disable_jump=false;
+}
+
+if(disable_cordinates)
+{
+disable_cordinates=false;
+}
+interior=0;
+
+string[] ldata=delinear(mdata);
+for(uint i=0; i<ldata.length(); i++)
+{
+string[] parsed=string_split(ldata[i], ":", true);
+if(parsed[0]=="mapname")
+{
+mapname=string_replace(ldata[i], "mapname:", "", false);
+}
+else if(parsed[0]=="interior"&&parsed.length()==2) interior=string_to_number(parsed[1]);
+else if(parsed[0]=="maxx")
+{
+max.x=string_to_number(parsed[1]);
+}
+else if(parsed[0]=="maxy")
+{
+max.y=string_to_number(parsed[1]);
+}
+else if(parsed[0]=="maxz")
+{
+max.z=string_to_number(parsed[1]);
+}
+else if(parsed[0]=="disable_camera"&&parsed.length()>1)
+{
+if (parsed[1]==1)
+{
+disable_camera=true;
+}
+}
+else if(parsed[0]=="disable_jump"&&parsed.length()>1)
+{
+if (parsed[1]==1)
+{
+disable_jump=true;
+}
+}
+else if(parsed[0]=="disable_cordinates"&&parsed.length()>1)
+{
+if (parsed[1]==1)
+{
+disable_cordinates=true;
+}
+}
+else if(parsed[0]=="safezone" and parsed.length()>6)
+{
+spawn_safezone(string_to_number(parsed[1]), string_to_number(parsed[2]), string_to_number(parsed[3]), string_to_number(parsed[4]), string_to_number(parsed[5]), string_to_number(parsed[6]));
+}
+ else if(parsed[0]=="platform")
+{
+platforms.insert_last(string_replace(ldata[i], "platform:", "", false));
+}
+else if(parsed[0]=="zone")
+{
+zones.insert_last(string_replace(ldata[i], "zone:", "", false));
+}
+else if(parsed[0]=="src" and parsed.length()>6)
+{
+int lx=string_to_number(parsed[1]);
+int rx=string_to_number(parsed[2]);
+int miny=string_to_number(parsed[3]);
+int maxy=string_to_number(parsed[4]);
+int minz=string_to_number(parsed[5]);
+int maxz=string_to_number(parsed[6]);
+string shit=parsed[7];
+
+double pitch=100;
+double s_volume=100;
+int amb=0;
+if(parsed.length()>8) s_volume=string_to_number(parsed[8]);
+if(parsed.length()>9) pitch=string_to_number(parsed[9]);
+if(parsed.length()>10) amb=string_to_number(parsed[10]);
+spawn_source(lx, rx,miny,maxy, minz, maxz,s_volume,pitch,shit,false,amb,mapname);
+}
+}
+//mapload_end
+}
+void playstep(int x, int y, int z)
+{
+p.play_stationary_extended("sounds\\"+get_tile_at(x, y, z)+"step"+random(1, 5)+".ogg", false, 0.0, 0.0, 0.0, get_tile_pitch(x,y,z), false,null,null); 
+}
+void move(string dir)
+{
+//if(can_move==true) addtile_list();
+if(dir=="Up" and sitting==0 and can_move==true)
+{
+if(get_tile_at(mr.x, mr.y, me.z+1)!="" and get_tile_at(mr.x, mr.y, me.z+1)!="air" and string_left(get_tile_at(mr.x,mr.y,me.z+1),4)!="wall")
+{
+me.z++;
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+if(string_contains(get_tile_at(me.x, me.y, me.z),"underwater",1)>-1 and underwater==false)
+{
+underwater=true;
+p.play_stationary("sinkstart.ogg",false);
+send_reliable(0,"social sinkstart",0);
+}
+if(string_contains(get_tile_at(me.x, me.y, me.z),"underwater",1)<0 and underwater==true)
+{
+underwater=false;
+p.play_stationary("rise.ogg",false);
+p.play_stationary("risestart.ogg",false);
+send_reliable(0,"social rise",0);
+send_reliable(0,"social risestart",0);
+}
+playstep(mr.x,mr.y,me.z);
+send_reliable(0, "move_to "+mr.x+" "+mr.y+" "+me.z, 0);
+}
+}
+if(dir=="Down" and sitting==0 and can_move==true)
+{
+if(get_tile_at(mr.x, mr.y, me.z-1)!="air" and get_tile_at(mr.x, mr.y, me.z-1)!="" and string_left(get_tile_at(mr.x,mr.y,me.z-1),4)!="wall")
+{
+me.z--;
+if(string_contains(get_tile_at(me.x, me.y, me.z),"underwater",1)>-1 and underwater==false)
+{
+underwater=true;
+p.play_stationary("sinkstart.ogg",false);
+send_reliable(0,"social sinkstart",0);
+}
+if(string_contains(get_tile_at(me.x, me.y, me.z),"underwater",1)<0 and underwater==true)
+{
+underwater=false;
+p.play_stationary("rise.ogg",false);
+p.play_stationary("risestart.ogg",false);
+}
+playstep(mr.x,mr.y,me.z);
+send_reliable(0, "move_to "+mr.x+" "+mr.y+" "+me.z, 0);
+}
+}
+if(dir=="Forward" and sitting==0 and can_move==true)
+{
+int ox=me.x;
+int oy=me.y;
+me=move(me.x, me.y, me.z, facing, north);
+if(round(me.x, 0)<0 or round(me.x, 0)>max.x or round(me.y, 0)<0 or round(me.y, 0)>max.y)
+{
+me.x=ox;
+me.y=oy;
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+return;
+}
+checkaround(ox, oy);
+}
+if(dir=="Backward" and sitting==0 and can_move==true)
+{
+int ox=me.x;
+int oy=me.y;
+me=move(me.x, me.y, me.z, facing, south);
+if(round(me.x, 0)<0 or round(me.x, 0)>max.x or round(me.y, 0)<0 or round(me.y, 0)>max.y)
+{
+me.x=ox;
+me.y=oy;
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+return;
+}
+checkaround(ox, oy);
+}
+if(dir=="Left" and sitting==0 and can_move==true)
+{
+int ox=me.x;
+int oy=me.y;
+me=move(me.x, me.y, me.z, facing, west);
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+if(round(me.x, 0)<0 or round(me.x, 0)>max.x or round(me.y, 0)<0 or round(me.y, 0)>max.y)
+{
+me.x=ox;
+me.y=oy;
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+return;
+}
+checkaround(ox, oy);
+}
+if(dir=="Right" and sitting==0 and can_move==true)
+{
+int ox=me.x;
+int oy=me.y;
+me=move(me.x, me.y, me.z, facing, east);
+if(round(me.x, 0)<0 or round(me.x, 0)>max.x or round(me.y, 0)<0 or round(me.y, 0)>max.y)
+{
+me.x=ox;
+me.y=oy;
+//send_reliable(0, "move_to "+me.x+" "+me.y+" "+me.z, 0);
+return;
+}
+checkaround(ox, oy);
+}
+}
+void checkaround(double ox, double oy)
+{
+mr.x=round(me.x, 0);
+mr.y=round(me.y, 0);
+if(string_contains(get_tile_at(mr.x, mr.y, me.z), "wall", 1)>-1)
+{
+if(inpacttimer.elapsed>1000)
+{
+inpacttimer.restart();
+p.play_stationary_extended("sounds\\wall"+string_replace(get_tile_at(mr.x, mr.y, me.z), "wall", "", true)+".ogg", false, 0.0, 0.0, 0.0, get_tile_pitch(mr.x,mr.y,me.z), false,null,null); 
+send_reliable(0, "hitwall "+me.x+" "+me.y+" "+me.z+" "+get_tile_pitch(mr.x,mr.y,me.z), 0);
+}
+me.x=ox;
+me.y=oy;
+mr.x=round(ox,0);
+mr.y=round(oy,0);
+}
+else
+{
+playstep(mr.x,mr.y,me.z);
+send_reliable(0, "move_to "+mr.x+" "+mr.y+" "+me.z, 0);
+send_reliable(0,"update_player "+me.x+" "+me.y+" "+me.z+" "+name+" "+mapname,0);
+}
+}
+void checkcameratile()
+{
+currentcameratile=get_tile_at(camera.x, camera.y, camera.z);
+}
+string gct()
+{
+return get_tile_at(camera.x, camera.y, camera.z);
+}
+void playcamera(int x=me.x, int y=me.y, int z=me.z)
+{
+if (gct()=="")
+{
+p.play_extended_3d("sounds\\cameraair.ogg", mr.x, mr.y, me.z, camera.x, camera.y, camera.z, facing, 0,0, 0, 0, 0, 0, false, 0.0, 0.0, 0.0, get_tile_pitch(camera.x,camera.y,camera.z), false, null, null, true, 0);
+}
+else if (gct()=="hazard")
+{
+p.play_extended_3d("sounds\\camerahazard.ogg", mr.x, mr.y, me.z, camera.x, camera.y, camera.z, facing, 0,0, 0, 0, 0, 0, false, 0.0, 0.0, 0.0, get_tile_pitch(camera.x,camera.y,camera.z), false, null, null, true, 0);
+}
+else if (string_contains(gct(),"wall",1)>-1)
+{
+p.play_extended_3d("sounds\\"+get_tile_at(camera.x, camera.y, camera.z)+".ogg", mr.x, mr.y, me.z, camera.x, camera.y, camera.z, facing, 0,0, 0, 0, 0, 0, false, 0.0, 0.0, 0.0, get_tile_pitch(camera.x,camera.y,camera.z), false, null, null, true, 0);
+}
+else
+{
+p.play_extended_3d("sounds\\"+get_tile_at(camera.x, camera.y, camera.z)+"step"+random(1,5)+".ogg", mr.x, mr.y, me.z, camera.x, camera.y, camera.z, facing, 0,0, 0, 0, 0, 0, false, 0.0, 0.0, 0.0, get_tile_pitch(camera.x,camera.y,camera.z), false, null, null, true, 0);
+}
+}
+void cameramove(string dir)
+{
+if(dir=="Up")
+{
+camera.z++;
+playcamera();
+}
+if(dir=="Down")
+{
+camera.z--;
+playcamera();
+}
+if(dir=="Forward")
+{
+double ox=camera.x;
+double oy=camera.y;
+camera=move(camera.x, camera.y, camera.z, facing, north);
+if(round(camera.x, 0)<0 or round(camera.x, 0)>max.x or round(camera.y, 0)<0 or round(camera.y, 0)>max.y)
+{
+camera.x=ox;
+camera.y=oy;
+return;
+}
+playcamera();
+}
+if(dir=="Backward")
+{
+double ox=camera.x;
+double oy=camera.y;
+camera=move(camera.x, camera.y, camera.z, facing, south);
+if(round(camera.x, 0)<0 or round(camera.x, 0)>max.x or round(camera.y, 0)<0 or round(camera.y, 0)>max.y)
+{
+camera.x=ox;
+camera.y=oy;
+return;
+}
+playcamera();
+}
+if(dir=="Left")
+{
+double ox=camera.x;
+double oy=camera.y;
+camera=move(camera.x, camera.y, camera.z, facing, west);
+if(round(camera.x, 0)<0 or round(camera.x, 0)>max.x or round(camera.y, 0)<0 or round(camera.y, 0)>max.y)
+{
+camera.x=ox;
+camera.y=oy;
+return;
+}
+playcamera();
+}
+if(dir=="Right")
+{
+double ox=camera.x;
+double oy=camera.y;
+camera=move(camera.x, camera.y, camera.z, facing, east);
+if(round(camera.x, 0)<0 or round(camera.x, 0)>max.x or round(camera.y, 0)<0 or round(camera.y, 0)>max.y)
+{
+camera.x=ox;
+camera.y=oy;
+return;
+}
+playcamera();
+}
+}
+class binput
+{
+string[] indata;
+string[] innames;
+binput(string[] names, string[] input)
+{
+indata=input;
+innames=names;
+}
+int num(string val)
+{
+int ix=innames.find(val);
+if(ix>-1) return string_to_number(indata[ix]);
+return -1;
+}
+string str(string val)
+{
+int ix=innames.find(val);
+if(ix>-1) return indata[ix];
+return "";
+}
+}
+binput@ builder_input(string spec)
+{
+if(spec=="") return null;
+string[] items=spec.split(";");
+string[] names,vals;
+for(uint i=0; i<items.length(); i++)
+{
+string[] p=string_split(items[i],"=",false);
+names.insert_last(p[0]);
+string tmp=v.input(p[1],"",true,false);
+if(tmp=="")
+{
+speak("canceled");
+return null;
+}
+vals.insert_last(tmp);
+}
+binput res(names,vals);
+return res;
+}
+
+void edit_line(string data)
+{
+string cl;
+int counter=0;
+string []parameters=string_split(data, "\r\n", false);
+if(data=="")
+parameters.resize(0);
+string []storage=parameters;
+bool changed=false;
+speak("Extended editing. Press arrows up and down to move between the lines, press shift and arrows to move the lines, press Use delete to remove the line, use ctrl+c to copy the map in to your keyboard, press ctrl+v to insert map from the keyboard, press ctrl+g to go to the certain line, press ctrl+delete to remove the map, press enter on the line to edit it. Press f1 to add a new line. Press escape to exit.");
+while(true) {
+cl=get_characters();
+wait(5);
+netloop();
+mainloop();
+string p=parameters[counter];
+if(counter > parameters.length())
+{
+counter=parameters.length()-1;
+}
+if(cl!="" and cl.length()==1)
+{
+int f=0;
+int oc=counter;
+for(uint i=counter; i<parameters.length(); i++)
+{
+if(i==counter)
+{
+continue;
+}
+if(parameters[i][0]==cl)
+{
+counter=i;
+speak(parameters[counter]);
+cl="";
+f=1;
+break;
+}
+}
+if(f==0)
+{
+counter=0;
+for(uint i=counter; i<parameters.length(); i++)
+{
+if(parameters[i][0]==cl)
+{
+counter=i;
+speak(parameters[counter]);
+cl="";
+f=1;
+break;
+}
+}
+}
+if(f==0)
+{
+speak("No such line exists");
+}
+}
+if(key_pressed(KEY_RETURN)) {
+if(!check_parameters(parameters.length()))
+continue;
+string line=v.input( "Enter line.",parameters[counter]);
+if(line=="") {
+speak("no data was entered.");
+continue;
+}
+if(line!=parameters[counter])
+changed=true;
+parameters[counter]=line;
+speak("done.");
+}
+if(key_pressed(KEY_F1)) {
+string line=v.input("","enter line");
+if(line=="") {
+speak("You need to fill this field!");
+continue;
+}
+parameters.insert_at(counter, line);
+speak("done.");
+changed=true;
+}
+if(key_down(KEY_LCONTROL) or key_down(KEY_RCONTROL)) {
+if(key_pressed(KEY_S))
+{
+storage=parameters;
+string d;
+for(int i=0; i<parameters.length(); i++)
+{
+d+=parameters[i]+"\r\n";
+}
+send_reliable(0,"setmap "+d,10);
+break;
+}
+if(key_pressed(KEY_G)) {
+if(!check_parameters(parameters.length()))
+continue;
+if(parameters.length()==1) {
+speak("no line to go.");
+continue;
+}
+int new_line=string_to_number(v.input("enter the line number you want to go. Last line to go to"+(parameters.length()-1)+" current line:"+counter,"",true,false));
+if(new_line<1)
+{
+speak("canceled");
+continue;
+}
+if(new_line>parameters.length()-1) {
+speak("the row you want to go is more than the total number of lines please try a number between these numbers "+parameters.length());
+continue;
+}
+counter=new_line;
+speak(parameters[counter]);
+}
+if(key_pressed(KEY_C)) {
+string get;
+for(int i=0; i<parameters.length(); i++) {
+get+=parameters[i];
+if(i<parameters.length()-1)
+get+="\r\n";
+}
+if(get=="") {
+speak("no data to copy on the map.");
+continue;
+}
+clipboard_copy_text(get);
+speak("Map copied to clipboard.");
+}
+if(key_pressed(KEY_V)) {
+string get=clipboard_read_text();
+if(get=="") {
+speak("there is no data to be pasted in the clipboard.");
+continue;
+}
+string []lines=string_split(get, "\r\n", false);
+parameters.resize(0);
+for(int i=0; i<lines.length(); i++)
+{
+parameters.insert_last(lines[i]);
+}
+counter=parameters.length()-1;
+speak("Map pasted from the clipboard.");
+changed=true;
+}
+if(key_pressed(KEY_DELETE)) {
+if(!check_parameters(parameters.length()))
+continue;
+int q=yesno("Are you sure you want to delete all data?");
+if(q==1) 
+{
+parameters.resize(0);
+speak("done.");
+changed=true;
+}
+}
+}
+if(key_down(KEY_LSHIFT) or key_down(KEY_RSHIFT) and parameters.length()>0) {
+string p=parameters[counter];
+if(key_pressed(KEY_UP) and counter>0) {
+parameters.remove_at(counter);
+parameters.insert_at(counter-1, p);
+counter--;
+changed=true;
+}
+if(key_pressed(KEY_DOWN) and counter<parameters.length()-1) {
+parameters.remove_at(counter);
+parameters.insert_at(counter+1, p);
+counter++;
+changed=true;
+}
+}
+if(key_pressed(KEY_UP)) {
+if(!check_parameters(parameters.length()))
+continue;
+if(counter>0)
+counter--;
+speak(parameters[counter]);
+}
+if(key_pressed(KEY_DOWN)) {
+if(!check_parameters(parameters.length()))
+continue;
+if(counter<parameters.length()-1)
+counter++;
+speak(parameters[counter]);
+}
+if(key_pressed(KEY_DELETE)) {
+if(!check_parameters(parameters.length()))
+continue;
+speak(parameters[counter]+" deleted");
+parameters.remove_at(counter);
+if(counter>parameters.length()-1 and parameters.length()>0)
+counter=parameters.length()-1;
+changed=true;
+}
+if(key_pressed(KEY_HOME)) {
+if(!check_parameters(parameters.length()))
+continue;
+counter=0;
+speak(parameters[counter]);
+}
+if(key_pressed(KEY_END)) {
+if(!check_parameters(parameters.length()))
+continue;
+counter=parameters.length()-1;
+speak(parameters[counter]);
+}
+if(key_pressed(KEY_ESCAPE))
+{
+if(changed==true)
+{
+int q=question("alert","Are you sure you want to save the changes?");
+if(q==1)
+{
+storage=parameters;
+string d;
+for(int i=0; i<parameters.length(); i++)
+{
+d+=parameters[i]+"\r\n";
+}
+send_reliable(0,"setmap "+d,10);
+}
+break;
+}
+break;
+}
+//
+}
+}
+
+
+bool check_parameters(int l)
+{
+if(l==0)
+ {
+speak("No lines.");
+return false;
+}
+return true;
+}

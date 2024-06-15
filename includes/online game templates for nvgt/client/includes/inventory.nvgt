@@ -1,0 +1,857 @@
+bool invchanged=false;
+double number=0;
+string catagories;
+string cat="all inventory";
+string[] invcat;
+int invcatpos=0;
+string focuseditem="";
+string lefthand="nothing";
+string righthand="nothing";
+string llastuse="nothing";
+string rlastuse="nothing";
+int hands;
+string[] not_drop;
+bool is_not_drop(string name)
+{
+for(uint i=0; i<not_drop.length(); i++)
+{
+if(name==not_drop[i])
+{
+return true;
+}
+}
+return false;
+}
+void give(string itemname, double itemvalue)
+{
+string content=inventory;
+string[] peramitors=string_split(content, "\r\n", true);
+string[] values;
+for(uint i=0; i<peramitors.length(); i++)
+{
+values.insert_at(i,string_replace(peramitors[i], string_left(peramitors[i], string_contains(peramitors[i], "=", 1)+1), "", true));
+peramitors[i]=string_replace(peramitors[i], "="+values[i], "", true);
+}
+if(inv_item_exists(itemname))
+{
+double orgval;
+if(inv_item_number(itemname) > -1)
+{
+orgval=string_to_number(values[inv_item_number(itemname)]);
+}
+else
+{
+return;
+}
+if(orgval+itemvalue < 1)
+{
+inv_delete_item(itemname);
+}
+else
+{
+values[inv_item_number(itemname)]=(orgval+itemvalue);
+string tempinv;
+for(uint i=0; i<peramitors.length(); i++)
+{
+tempinv+=peramitors[i]+"="+values[i]+"\r\n";
+}
+inventory=tempinv;
+}
+}
+else
+{
+if(itemvalue > 0)
+{
+inventory+=itemname+"="+itemvalue+"\r\n";
+}
+}
+inventory=inventory;
+}
+bool inv_item_exists(string itemname)
+{
+string content=inventory;
+string[] peramitors=string_split(content, "\r\n", true);
+string[] values;
+for(uint i=0; i<peramitors.length(); i++)
+{
+values.insert_at(i,string_replace(peramitors[i], string_left(peramitors[i], string_contains(peramitors[i], "=", 1)+1), "", true));
+peramitors[i]=string_replace(peramitors[i], "="+values[i], "", true);
+}
+for(uint i=0; i<peramitors.length(); i++)
+{
+if(peramitors[i]==itemname)
+{
+return true;
+}
+}
+return false;
+}
+double inv_item_number(string itemname)
+{
+string content=inventory;
+string[] peramitors=string_split(content, "\r\n", true);
+string[] values;
+for(uint i=0; i<peramitors.length(); i++)
+{
+values.insert_at(i,string_replace(peramitors[i], string_left(peramitors[i], string_contains(peramitors[i], "=", 1)+1), "", true));
+peramitors[i]=string_replace(peramitors[i], "="+values[i], "", true);
+}
+for(uint i=0; i<peramitors.length(); i++)
+{
+if(peramitors[i]==itemname)
+{
+return string_to_number(values[i]);
+}
+}
+return 0;
+}
+double inv_item(string itemname)
+{
+string content=inventory;
+string[] peramitors=string_split(content, "\r\n", true);
+string[] values;
+for(uint i=0; i<peramitors.length(); i++)
+{
+values.insert_at(i,string_replace(peramitors[i], string_left(peramitors[i], string_contains(peramitors[i], "=", 1)+1), "", true));
+peramitors[i]=string_replace(peramitors[i], "="+values[i], "", true);
+}
+for(uint i=0; i<peramitors.length(); i++)
+{
+if(peramitors[i]==itemname)
+{
+return i;
+}
+}
+return -1;
+}
+void inv_delete_item(string itemname)
+{
+string content=inventory;
+string[] peramitors=string_split(content, "\r\n", true);
+string[] values;
+for(uint i=0; i<peramitors.length(); i++)
+{
+values.insert_at(i,string_replace(peramitors[i], string_left(peramitors[i], string_contains(peramitors[i], "=", 1)+1), "", true));
+peramitors[i]=string_replace(peramitors[i], "="+values[i], "", true);
+}
+for(uint i=0; i<peramitors.length(); i++)
+{
+if(peramitors[i]==itemname)
+{
+inventory=string_replace(inv, itemname+"="+values[i]+"\r\n", "", false);
+}
+}
+}
+
+void invmenu(string c)
+{
+sound invmove;
+get_characters();
+string multichar;
+string cl;
+string char;
+string test;
+items=string_split(invlist,"\r\n",true);
+/*
+if (c=="all inventory") 
+if (c=="weapons and ammo") items=string_split(wa,"\r\n",true);
+if (c=="packages and packed items") items=string_split(packages,"\r\n",true);
+if (c=="food and drinks") items=string_split(food,"\r\n",true);
+if (c=="unprepared food and drinks") items=string_split(unprepared_food,"\r\n",true);
+if (c=="dead animals and corpses") items=string_split(corpse,"\r\n",true);
+if (c=="currency") items=string_split(currency,"\r\n",true);
+if (c=="travel items") items=string_split(travelitem,"\r\n",true);
+if (c=="clothes") items=string_split(clothes,"\r\n",true);
+if (c=="medical items") items=string_split(medical,"\r\n",true);
+*/
+int number=0;
+for(int i=0; i<items.length(); i+=1)
+{
+number++;
+}
+speak(pu.get_value(c)+", "+number+" items.");
+//int position=0;
+timer invchange;
+while(true)
+{
+wait(5);
+if (invchange.elapsed>100 and  invchanged==true)
+{
+invchange.restart();
+invchanged=false;
+}
+/*
+if(c=="all inventory") items=string_split(invlist,"\r\n",true);
+if (c=="weapons and bulets") items=string_split(wa,"\r\n",true);
+if (c=="packages and packed items") items=string_split(packages,"\r\n",true);
+if (c=="food and drinks") items=string_split(food,"\r\n",true);
+if (c=="unprepared food and drinks") items=string_split(unprepared_food,"\r\n",true);
+if (c=="dead animals and corpses") items=string_split(corpse,"\r\n",true);
+if (c=="currency") items=string_split(currency,"\r\n",true);
+if (c=="travel items") items=string_split(travelitem,"\r\n",true);
+if (c=="clothes") items=string_split(clothes,"\r\n",true);
+if (c=="medical items") items=string_split(medical,"\r\n",true);
+*/
+if(items.length()==1) position==0;
+if(items.length()<=0)
+{
+//invcat_set();
+//invcheck();
+invcatpos+=1;
+if (invcatpos>=invcat.length())
+invcatpos=0;
+invmenu(invcat[invcatpos]);
+cat=invcat[invcatpos];
+break;
+}
+string[] line=string_split(items[position], "|", true);
+if(inv_item_number(line[1])<1)
+{
+items.remove_at(position);
+if(position>0) position--;
+else position++;
+string d;
+
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+//invlist=d;
+send_reliable(0,"setinv "+d,0);
+
+if(items.length()>1and position!=items.length()-1) position++;
+else if(items.length()==1) position=0;
+else if(position==items.length()-1) position--;
+
+//if(position>items.length()-1) position--;
+}
+mainloop();
+netloop();
+/*
+char=get_characters();
+if(char!="" and char!=" ")
+{
+int f=0;
+int counter=position;
+//string []item=string_split(items[counter], "=", true);
+for (uint i=counter; i<items.length(); i++)
+{
+//deneme
+if(position==i) continue;
+test=items[i][0];
+if (test==char)
+{
+counter=i;
+f=1;
+break;
+}
+}
+if(f==0)
+{
+for (uint i=0; i<items.length(); i++)
+{
+if(position==i) continue;
+test=items[i][0];
+if (test==char)
+{
+counter=i;
+f=1;
+//test="";
+break;
+}
+}
+}
+if(f==1)
+{
+position=counter;
+string[] line=string_split(items[position], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+test="";
+}
+if(f==0)
+{
+speak("No such item exists");
+}
+}
+*/
+if(!alt_is_down())
+{
+if(multinav_timer.elapsed>1000 and multichar!="")
+multichar="";
+string c=get_characters();
+if(c!="" and multichar!=c)
+{
+multinav_timer.restart();
+multichar+=c;
+}
+if(multichar!="" and c!="")
+{
+bool found=false;
+for (uint i=position; i<items.length(); i++)
+{
+if(position==i) continue;
+test=items[i];
+if (string_left(test, multichar.length())==multichar)
+{
+if(position>0)
+{
+if(string_left(test, multichar.length())==string_left(items[position-1], multichar.length()) and multichar.length()>1)
+{
+found=true;
+break;
+}
+}
+//position=i;
+if (position-1<i)
+position=i;
+else if (position-1>i)
+position=i;
+string[] line=string_split(items[position], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+found=true;
+break;
+}
+else
+{
+continue;
+}
+}
+if (found==false)
+{
+for (uint i=0; i<position; i++)
+{
+if(position==i) continue;
+test=items[i];
+if (string_left(test, multichar.length())==multichar)
+{
+if(position>0)
+{
+if(string_left(test, multichar.length())==string_left(items[position-1], multichar.length()) and multichar.length()>1)
+{
+found=true;
+break;
+}
+}
+if (position-1<i)
+position=i;
+else if (position>i)
+position=i;
+string[] line=string_split(items[position], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+break;
+}
+else
+{
+//speak("No such item exists");
+continue;
+}
+}
+}
+}
+}
+string p=items[position];
+if(key_pressed(KEY_HOME))
+{
+if(alt_is_down() and c=="all inventory" and items.length()>1)
+{
+invchange.restart();
+if(position>0) {
+items.remove_at(position);
+items.insert_at(0, p);
+position=0;
+invchange.restart();
+invchanged=true;
+spool.play_stationary("sounds\\invmove.ogg",false);
+//storage=items;
+string d;
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+send_reliable(0,"setinv "+d,0);
+}
+}
+else
+{
+if(items.length()==1)
+{
+position=0;
+string[] line=string_split(items[0], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+else
+{
+position=0;
+if (items[position]!="")
+{
+string[] line=string_split(items[0], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+spool.play_stationary("sounds\\invclick.ogg",false);
+}
+}
+}
+if(key_pressed(KEY_END))
+{
+if(alt_is_down() and c=="all inventory" and items.length()>1)
+{
+invchange.restart();
+if(position<items.length()-1) {
+items.remove_at(position);
+items.insert_at(items.length(), p);
+position=items.length()-1;
+invchange.restart();
+invchanged=true;
+spool.play_stationary("sounds\\invmove.ogg",false);
+string d;
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+send_reliable(0,"setinv "+d,0);
+}
+}
+else
+{
+if(items.length()==1)
+{
+position=0;
+if (items[position]!="")
+{
+string[] line=string_split(items[0], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+}
+else if(items.length()>1)
+{
+position=items.length()-1;
+if (items[position]!="")
+{
+string[] line=string_split(items[position], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+spool.play_stationary("sounds\\invclick.ogg",false);
+}
+}
+}
+if (key_pressed(KEY_TAB) and key_up(KEY_LMENU) and key_up(KEY_RMENU))
+{
+if (shift_is_down())
+{
+//invcheck();
+position=0;
+invcatpos-=1;
+if (invcatpos<0)
+invcatpos=invcat.length()-1;
+spool.play_stationary("sounds\\invswitch.ogg",false);
+invmenu(invcat[invcatpos]);
+cat=invcat[invcatpos];
+break;
+}
+else
+{
+//invcheck();
+position=0;
+invcatpos+=1;
+if (invcatpos>=invcat.length())
+invcatpos=0;
+spool.play_stationary("sounds\\invswitch.ogg",false);
+invmenu(invcat[invcatpos]);
+cat=invcat[invcatpos];
+break;
+}
+}
+if( alt_is_down())
+{
+if(key_pressed(KEY_1))
+{
+items.resize(0);
+cat="all inventory";
+spool.play_stationary("sounds\\invswitch.ogg",false);
+//invcheck();
+invmenu(cat);
+break;
+}
+/*
+if(key_pressed(KEY_2))
+{
+if(wa!="")
+{
+items.resize(0);
+cat="weapons and ammo";
+spool.play_stationary("sounds\\invswitch.ogg",false;
+invcheck();
+invmenu(cat);
+break;
+}
+else speak("You have no items listed in this category");
+}
+if(key_pressed(KEY_3))
+{
+if(packages!="")
+{
+invcheck();
+items.resize(0);
+cat="packages and packed items";
+spool.play_stationary("sounds\\invswitch.ogg",false;
+invmenu(cat);
+break;
+}
+else speak("You have no items listed in this category");
+}
+if(key_pressed(KEY_4))
+{
+if(food!="")
+{
+invcheck();
+items.resize(0);
+spool.play_stationary("sounds\\invswitch.ogg",false,false,false);
+cat="food and drinks";
+invmenu(cat);
+break;
+}
+else speak("You have no items listed in this category");
+}
+if(key_pressed(KEY_5))
+{
+if(unprepared_food!="")
+{
+invcheck();
+items.resize(0);
+spool.play_stationary("sounds\\invswitch.ogg",false,false,false);
+cat="unprepared food and drinks";
+invmenu(cat);
+break;
+}
+else speak("You have no items listed in this category");
+}
+if(key_pressed(KEY_6))
+{
+if(corpse!="")
+{
+invcheck();
+items.resize(0);
+spool.play_stationary("sounds\\invswitch.ogg",false,false,false);
+cat="dead animals and corpses";
+invmenu(cat);
+break;
+}
+else speak("You have no items listed in this category");
+}
+*/
+}
+if (kup.pressing)
+{
+if(alt_is_down() and c=="all inventory")
+{
+invchange.restart();
+if(position>0) {
+items.remove_at(position);
+items.insert_at(position-1, p);
+position--;
+invchange.restart();
+invchanged=true;
+spool.play_stationary("sounds\\invmove.ogg",false);
+//storage=items;
+string d;
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+send_reliable(0,"setinv "+d,0);
+}
+}
+else
+{
+if(items.length()==1)
+{
+position=0;
+if (items[position]!="")
+{
+string[] line=string_split(items[0], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+}
+else if(position > 0 and items.length()>1)
+{
+position--;
+if (items[position]!="")
+{
+string[] line=string_split(items[position], "|", true);
+speak(line[0]+", "+inv_item_number(line[1]));
+}
+spool.play_stationary("sounds\\invclick.ogg",false);
+}
+}
+}
+if (kdown.pressing)
+{
+if(alt_is_down() and c=="all inventory")
+{
+invchange.restart();
+if(position<items.length()-1) {
+items.remove_at(position);
+items.insert_at(position+1, p);
+position++;
+invchange.restart();
+invchanged=true;
+spool.play_stationary("sounds\\invmove.ogg",false);
+string d;
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+send_reliable(0,"setinv "+d,0);
+}
+}
+else
+{
+if(items.length()==1)
+{
+position=0;
+if (items[position]!="")
+{
+string[] line=string_split(items[0], "|", true);
+if(line.length()>1) speak(line[0]+", "+inv_item_number(line[1]));
+}
+}
+else if(position < items.length()-1 and items.length()>1)
+{
+position++;
+string[] line=string_split(items[position], "|", true);
+if(line.length()>1) speak(line[0]+", "+inv_item_number(line[1]));
+spool.play_stationary("sounds\\invclick.ogg",false);
+}
+}
+}
+if(key_pressed(KEY_SPACE) and items[position]!="")
+{
+string[] line=string_split(items[position], "|", true);
+send_reliable(0,"giveitem "+line[1],0);
+}
+if(key_pressed(KEY_LEFT) and items[position]!="")
+{
+if(items.length()==1)
+{
+position=0;
+string[] line=string_split(items[0], "|", true);
+}
+else
+{
+string[] line=string_split(items[position], "|", true);
+}
+if(lefthand!=line[1])
+{
+ send_reliable(0,"take "+line[1]+" 1",0);
+lefthand=line[1];
+if(line[1]==righthand and inv_item_number(line[1])==1 and righthand==lefthand) righthand="nothing";
+invchanged=false;
+}
+}
+if(key_pressed(KEY_RIGHT) and items[position]!="")
+{
+if(items.length()==1)
+{
+position=0;
+string[] line=string_split(items[0], "|", true);
+}
+else
+{
+string[] line=string_split(items[position], "|", true);
+}
+if(righthand!=line[1])
+{
+send_reliable(0,"take "+line[1]+" 2",0);
+righthand=line[1];
+if(line[1]==lefthand and inv_item_number(line[1])==1 and lefthand==righthand) lefthand="nothing";
+invchanged=false;
+}
+}
+if(key_pressed(KEY_DELETE) )
+{
+string[] line=string_split(items[position], "|", true);
+send_reliable(0,"add_fab_item "+line[1],0);
+}
+if(key_pressed(KEY_BACK) and items[position]!="")
+{
+string[] line=string_split(items[position], "|", true);
+if(is_not_drop(line[1])==true)
+{
+speak("you can't drop this");
+}
+/*
+else if(is_no_drop(mr.x,mr.y,mr.z)==true)
+{
+speak("you can't drop this here");
+}
+*/
+else
+{
+if( alt_is_down()==false)
+{
+if(inv_item_number(line[1])<=1)
+{
+items.remove_at(position);
+if(position>0) position--;
+else position++;
+}
+send_reliable(0,"drop "+line[1]+" 1",0);
+}
+else
+{
+double amount=string_to_number(v.input("hav many.", ""));
+if(amount>0)
+{
+send_reliable(0,"drop "+line[1]+" "+amount,0);
+invchanged=false;
+//}
+}
+}
+}
+}
+if(key_pressed(KEY_RETURN) or key_pressed(KEY_NUMPADENTER))
+{
+string[] line=string_split(items[position], "|", true);
+if(shift_is_down())
+{
+send_reliable(0,"auctionitem "+line[1],0);
+return;
+}
+else
+{
+send_reliable(0,"desc "+line[1],0);
+invchanged=false;
+}
+}
+if(key_pressed(KEY_ESCAPE))
+{
+if (c=="all inventory")
+{
+string d;
+for(int i=0; i<items.length(); i++)
+{
+string[] line=string_split(items[i], "|", true);
+d+="\r\n"+line[1];
+}
+invlist=linear(items);;
+//invlist=d;
+send_reliable(0,"setinv "+d,0);
+}
+position=0;
+send_reliable(0,"invclose",0);
+return;
+}
+}
+return;
+}
+/*
+void invcheck()
+{
+string tempweapon;
+string temp_clothes;
+string temppackages;
+string tempfood;
+string tempcorpse;
+string tempunprepared_food;
+string temp_currency;
+string temptravel;
+string temp_medical;
+string[] peramitors;
+if(invlist!="") peramitors=string_split(invlist, "\r\n", false);
+if(peramitors.length>0)
+{
+for(uint i=0; i<peramitors.length(); i++)
+{
+string[] peramitors2=string_split(peramitors[i], "|", false);
+if (is_weapon(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+tempweapon+=peramitors[i]+"\r\n";
+number++;
+}
+if (is_medical(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+temp_medical+=peramitors[i]+"\r\n";
+number++;
+}
+if (is_clothes(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+temp_clothes+=peramitors[i]+"\r\n";
+number++;
+}
+if (is_food(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+tempfood+=peramitors[i]+"\r\n";
+number++;
+}
+if (is_corpse(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+tempcorpse+=peramitors[i]+"\r\n";
+number++;
+}
+if (is_unprepared_food(peramitors2[1])==true and inv_item_number(peramitors2[1])>0)
+{
+tempunprepared_food+=peramitors[i]+"\r\n";
+number++;
+}
+if(string_contains(peramitors2[1], "coin", 1)>-1 or string_contains(peramitors2[1], "dollar", 1)>-1and inv_item_number(peramitors2[1])>0)
+{
+temp_currency+=peramitors[i]+"\r\n";
+number++;
+}
+if(string_contains(peramitors2[1], "bike", 1)>-1 or string_contains(peramitors2[1], "teleporter", 1)>-1and inv_item_number(peramitors2[1])>0)
+{
+temptravel+=peramitors[i]+"\r\n";
+number++;
+}
+if(string_contains(peramitors2[1], "pack", 1)>-1 or string_contains(peramitors2[1], "bag", 1)>-1 or string_contains(peramitors2[1], "card_board_box", 1)>-1 and inv_item_number(peramitors2[1])>0)
+{
+temppackages+=peramitors[i]+"\r\n";
+number++;
+}
+}
+wa=tempweapon;
+packages=temppackages;
+food=tempfood;
+unprepared_food=tempunprepared_food;
+corpse=tempcorpse;
+currency=temp_currency;
+travelitem=temptravel;
+clothes=temp_clothes;
+medical=temp_medical;
+}
+}
+
+void invcat_set()
+{
+invcat.resize(0);
+invcat.insert_last("all inventory");
+
+if(wa!="") invcat.insert_last("weapons and ammo");
+if(packages!="") invcat.insert_last("packages and packed items");
+if(food!="") invcat.insert_last("food and drinks");
+if(unprepared_food!="") invcat.insert_last("unprepared food and drinks");
+if(corpse!="") invcat.insert_last("dead animals and corpses");
+if(currency!="") invcat.insert_last("currency");
+if(travelitem!="") invcat.insert_last("travel items");
+if(clothes!="") invcat.insert_last("clothes");
+if(medical!="") invcat.insert_last("medical items");
+//invcat.insert_last("corrupted food and beverages");
+//invcat.insert_last("unprepared food and beverages");
+//invcat.insert_last("food and beverages");
+//invcat.insert_last("medical items");
+//invcat.insert_last("materials");
+//invcat.insert_last("home appliances");
+//invcat.insert_last("paid items");
+//invcat.insert_last("packages and  bottles");
+}
+*/

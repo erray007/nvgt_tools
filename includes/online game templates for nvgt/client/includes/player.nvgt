@@ -1,0 +1,53 @@
+player@[] players(0);
+class player
+{
+int x,y,z;
+string map;
+string name;
+timer btimer;
+player(int px,int py,int pz,string pmap, string pname)
+{
+x=px;
+y=py;
+z=pz; map=pmap;
+map=pmap;
+name=pname;
+}
+}
+void spawn_player(int x,int y,int z,string map,string name)
+{
+player pl(x,y,z,map,name);
+players.insert_last(pl);
+}
+void remove_player(string username)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].name==username)
+players.remove_at(i);
+}
+}
+void remove_all_players()
+{
+players.resize(0);
+}
+void update_player_coordinates(string n, int x,int y,int z, string m)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].name==n)
+{
+players[i].x=x;
+players[i].y=y;
+players[i].z=z;
+if(players[i].map!=m)
+players[i].map=m;
+}
+}
+}
+int get_player_index(string n) {
+for(uint i=0; i<players.length(); i+=1) {
+if(players[i].name==n) return i;
+}
+return -1;
+}

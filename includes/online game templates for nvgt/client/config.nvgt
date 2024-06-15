@@ -1,0 +1,7 @@
+string net_pass="password";
+const string gamename="test";
+string webdir="localhost";
+string netaddress="localhost";
+const int netport=32145;
+const string installer_version="0.0";
+const string ver="0.0";

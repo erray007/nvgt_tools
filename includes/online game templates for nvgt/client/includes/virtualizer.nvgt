@@ -1,0 +1,45 @@
+int charrepeat=0;
+
+class virtualizer
+{
+int charrepeat=0;
+string message;
+string input(string title,string text="", bool online=false, bool secure_input=false,bool multiline=false)
+{
+audio_form r;
+r.create_window(title,false,false,true);
+
+string sc;
+if(secure_input==true) sc="*";
+string message;
+int n=r.create_input_box(title, text, sc, 0, false, multiline, false);
+r.focus(n);
+string t;
+while(true)
+{
+wait(5);
+
+if(!control_is_down()&&key_pressed(KEY_RETURN))
+{
+form.reset();
+message=t;
+break;
+}
+if(key_pressed(KEY_ESCAPE))
+{
+form.reset();
+message="";
+break;
+}
+r.monitor();
+
+if(online==true)
+{
+mainloop();
+netloop();
+}
+t=r.get_text(n);
+}
+return message;
+}
+}

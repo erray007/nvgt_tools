@@ -1,0 +1,54 @@
+/*
+Speedstop
+
+This class prevents the cheat speed hacking by using advantage of the time stamp functions that are available in the engine.
+*/
+class speedstop
+{
+timer TIMER_MAIN;
+uint64 TIME_STAMP_MAIN=TIME_STAMP;
+timer MS_MATCH_TIMER_MAIN;
+bool ENABLE_DISABLE_MAIN=true;
+int default_slack_time=50;
+void reset(bool is_user_reset=true) // should be called before you want to start use in order to prevent accedental speedhack protection
+{
+this.TIMER_MAIN.restart();
+this.TIME_STAMP_MAIN=TIME_STAMP;
+if(is_user_reset)
+this.MS_MATCH_TIMER_MAIN.restart();
+}
+bool get_hacking(int slack_time) // true if hack detected. 
+{
+if(this.ENABLE_DISABLE_MAIN==false)
+return false;
+if(this.TIMER_MAIN.elapsed>1000+slack_time)
+{
+if(TIME_STAMP<=this.TIME_STAMP_MAIN and this.MS_MATCH_TIMER_MAIN.elapsed>2000)
+return true;
+}
+else
+{
+if(this.TIMER_MAIN.elapsed<1000-slack_time and this.MS_MATCH_TIMER_MAIN.elapsed>2000)
+{
+if(TIME_STAMP>this.TIME_STAMP_MAIN)
+return true;
+}
+if(TIME_STAMP>this.TIME_STAMP_MAIN)
+this.reset(false);
+}
+return false;
+}
+bool get_hacking() property
+{
+return this.get_hacking(this.default_slack_time);
+}
+void disable() //pauses the speed_stop checks. 
+{
+ENABLE_DISABLE_MAIN=false;
+}
+void enable() //unpauses/enables speed_stop checks. 
+{
+ENABLE_DISABLE_MAIN=false;
+this.reset();
+}
+}//End of speedstop

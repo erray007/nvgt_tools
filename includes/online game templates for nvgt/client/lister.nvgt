@@ -1,0 +1,17 @@
+#pragma platform Linux
+string[] stuff=find_files("sounds/*.ogg");
+string list;
+void main()
+{
+if(stuff.length()>0)
+{
+for(uint i=0; i<stuff.length(); i++)
+{
+list+="\r\n"+stuff[i];
+}
+file f;
+f.open("list.txt","wb");
+f.write(list);
+f.close();
+}
+}

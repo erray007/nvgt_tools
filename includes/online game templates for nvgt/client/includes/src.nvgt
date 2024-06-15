@@ -1,0 +1,153 @@
+source@[] sources(0);
+int msource_volume;
+class source
+{
+double minx, maxx, miny, maxy, minz, maxz, source_sound, volume, pitch, ambed;
+double max_volume=0.0;
+string soundfile,map;
+bool paused=false, inrange=false, p2;
+source(int source_minx, int source_maxx, int source_miny, int source_maxy, int source_minz, int source_maxz, int source_volume, int source_pitch, string file, bool source_paused=false, int source_ambed=0 , string source_map="main")
+{
+minx=source_minx;
+maxx = source_maxx;
+miny=source_miny;
+maxy= source_maxy;
+minz=source_minz;
+maxz=source_maxz;
+volume=source_volume;
+max_volume=volume;
+if (volume<=-60)
+volume=-60;
+if (volume>0)
+volume=0;
+pitch=source_pitch;
+if(pitch>200)
+pitch=200;
+if(pitch<0)
+pitch=0;
+soundfile=file;
+map=source_map;
+source_sound=sourcepool.play_extended_3d("sounds\\"+soundfile, me.x, me.y, me.z, minx, miny, minz, facing, 0, 0, 0, 0, 0, 0, true, 0.0, 0.0, volume, pitch, false);
+ambed=source_ambed;
+sourcepool.update_sound_3d(source_sound, minx, miny, minz);
+sourcepool.update_sound_start_values(source_sound,0,msource_volume+volume,pitch);
+paused=source_paused;
+if(ambed==1) paused=true;
+if(paused==true)
+{
+sourcepool.pause_sound(source_sound);
+}
+p2=paused;
+sourcepool.update_sound_range_3d(source_sound, 0, maxx-minx, 0, maxy-miny, 0, maxz-minz);
+
+}
+bool is_in_range()
+{
+return (minx<=mr.x&&maxx>=mr.x&&miny<=mr.y&&maxy>=mr.y&&minz<=me.z&&maxz>=me.z);
+}
+void loop()
+{
+if(ambed==1)
+{
+bool r=is_in_range();
+if(r==true&&inrange==false)
+{
+inrange=true;
+sourcepool.resume_sound(source_sound);
+}
+else if(r==false&&inrange==true)
+{
+inrange=false;
+sourcepool.pause_sound(source_sound);
+}
+}
+if(paused!=p2)
+{
+if(paused==true and p2==false)
+{
+sourcepool.pause_sound(source_sound);
+p2=true;
+}
+else if(paused==false and p2==true )
+{
+sourcepool.resume_sound(source_sound);
+p2=false;
+}
+}
+}
+}
+void sourcecheckloop()
+{
+for (uint i=0; i<sources.length(); i++)
+{
+sources[i].loop();
+if(sources[i].map!=mapname)
+{
+sourcepool.pause_sound(sources[i].source_sound);
+}
+//else sourcepool.resume_sound(sources[i].source_sound);
+}
+}
+void remove_source(int minx, int maxx, int miny, int maxy, int minz, int maxz, string sound)
+{
+for (uint i=0; i<sources.length(); i++)
+{
+if(sources[i].minx==minx and sources[i].maxx==maxx and sources[i].miny==miny and sources[i].maxy==maxy and sources[i].minz==minz and sources[i].maxz==maxz and sources[i].soundfile==sound)
+{
+sourcepool.destroy_sound(sources[i].source_sound);
+sources.remove_at(i);
+}
+}
+}
+void destroy_all_sources()
+{
+for(uint i=0; i<sources.length(); i++)
+{
+sourcepool.destroy_sound(sources[i].source_sound);
+}
+sources.resize(0);
+}
+void pause_all_sources()
+{
+for(uint i=0; i<sources.length(); i++)
+{
+sources[i].paused=true;
+}
+}
+void resume_all_sources()
+{
+for(uint i=0; i<sources.length(); i++)
+{
+if(sources[i].ambed==1)
+{
+bool r=sources[i].is_in_range();
+if(r==true&&sources[i].inrange==false)
+{
+sources[i].inrange=true;
+sourcepool.resume_sound(sources[i].source_sound);
+}
+}
+else
+{
+sources[i].paused=false;
+}
+}
+}
+void spawn_source(int source_minx, int source_maxx, int source_miny, int source_maxy, int source_minz, int source_maxz, int source_volume, int source_pitch, string soundfile, bool paused=false, int ambed=0,string map="main")
+{
+if(map!=mapname) return;
+source source1(source_minx, source_maxx, source_miny, source_maxy, source_minz, source_maxz, source_volume, source_pitch, soundfile, paused, ambed,map);
+sources.insert_last(source1);
+}
+void change_source_volume(int volume)
+{
+msource_volume=volume;
+for(uint i=0; i<sources.length(); i++)
+{
+sourcepool.update_sound_start_values(sources[i].source_sound,0,msource_volume+sources[i].volume,sources[i].pitch);
+}
+/*
+for (uint i=0; i<timedsources.length(); i++)
+p.update_sound_start_values(timedsources[i].timedsource,0,msource_volume+timedsources[i].volume,timedsources[i].pitch);
+*/
+}

@@ -1,0 +1,488 @@
+//#pragma platform Linux
+//#include"clear_compiled_basename.nvgt"
+#include "bgt_compat.nvgt"
+#include "speech.nvgt"
+#include "includes/dateandtime.nvgt"
+#include "includes/logger.nvgt"
+#include "includes/cmd.nvgt"
+#include "includes/extra_functions.nvgt"
+#include "includes/mapevent.nvgt"
+#include "includes/mapoptions.nvgt"
+#include "includes/servermenu.nvgt"
+#include "includes/banner.nvgt"
+#include "includes/multiversion.nvgt"
+#include "includes/player_event.nvgt"
+#include "includes/rotation.nvgt"
+#include "includes/bodyfall.nvgt"
+#include "includes/network.nvgt"
+#include "includes/dicto_ini.nvgt"
+#include "includes/hip.nvgt"
+#include "includes/map.nvgt"
+#include "includes/player.nvgt"
+#include "includes/savedata.nvgt"
+#include "includes/char_save.nvgt"
+#include "includes/moving_sound_serverside_handler.nvgt"
+string net_pass="password";
+const int netport=32145;
+
+int hour=0, minute=1, day=1, month=1, year=2000;
+int timetime=5000;
+
+timer uptimer;
+string minver="0.0";
+string version="0.0";
+string clog;
+
+string main_map="main";
+network_event e;
+network host;
+void main()
+{
+init_mapsystem();
+file f;
+f.open("settings/changelog.txt","rb");
+clog=f.read();
+f.close();
+show_window("server");
+if(host.setup_server(netport, 20, 500)==false)
+{
+alert("error","server installation failed");
+exit();
+}
+while(true)
+{
+wait(5);
+netloop();
+if(players.length()>0)
+{
+for(uint i=0; i<players.length(); i++)
+{
+players[i].ploop();
+}
+}
+file e;
+e.open("error.txt","wb");
+e.write(get_call_stack());
+e.close();
+if(key_pressed(KEY_ESCAPE)) exit();
+}
+}
+
+void netloop()
+{
+e=host.request(5);
+if(e.type==event_disconnect)
+{
+int px=get_player_index(e.peer_id);
+if(px>-1) {
+send_reliable(0,players[px].name+" has lost connection to the server.",2);
+remove_from_server(px);
+}
+}
+if(e.type==event_receive)
+{
+if(e.channel==0)
+{
+string[] parsed=get_event_message().split(" ");
+if(parsed[0]=="ping")
+{
+send_reliable(e.peer_id,"pong",0);
+}
+else if(parsed[0]=="login" and parsed.length() > 4)
+{
+login(parsed[1], parsed[2], e.peer_id, parsed[3], parsed[4]);
+}
+else if(parsed[0]=="create"&&parsed.length()==3)
+{
+create(parsed[1],parsed[2], e.peer_id);
+}
+else if(parsed[0]=="spawn_player" and parsed.length() > 5)
+{
+spawn_player(string_to_number(parsed[1]), string_to_number(parsed[2]), string_to_number(parsed[3]), parsed[4], parsed[5], e.peer_id);
+int index=getplayer_by_peer(e.peer_id);
+if(index>-1)
+{
+player_peers.set(players[index].peer_id,index);
+player_names.set(players[index].name,index);
+string dir="chars/"+players[index].name;
+file f;
+load_char(players[index]);
+f.open(dir+"/compid.usr","rb");
+players[index].compid=f.read();
+f.close();
+f.open(dir+"/adminflag.usr","rb");
+if(players[index].is_admin())
+players[index].title=f.read();
+f.close();
+if(file_exists(dir+"/dev.usr"))
+{
+players[index].dev=true;
+players[index].admin=true;
+
+send_reliable(players[index].peer_id,"You are an dev. Type /adminhelp for help.",2);
+}
+if(file_exists(dir+"/admin.usr") and players[index].dev==false)
+{
+players[index].admin=true;
+send_reliable(players[index].peer_id,"You are an admin. Type /adminhelp for help.",2);
+}
+if(players.length()>0)
+{
+for(uint i=0; i<players.length(); i++) {
+if(players[i].name!=players[index].name) players[index].packet("forcespawn "+players[i].x+" "+players[i].y+" "+players[i].z+" "+players[i].map+" "+players[i].name,0);
+}
+}
+if(msounds.length()>0)
+{
+for(uint i=0; i<msounds.length(); i++)
+{
+send_reliable(players[index].peer_id,"createmsound "+msounds[i].id+" "+msounds[i].soundloop+" "+msounds[i].x+" "+msounds[i].y+" "+msounds[i].z+" "+msounds[i].map+" "+msounds[i].pitch,4);
+}
+}
+send_reliable(players[index].peer_id,"play_s welcome.ogg 0 100",0);
+send_reliable(players[index].peer_id,"welcome to This game. Message of the day:"+get_motd(),2);
+}
+}
+else if(parsed[0]=="close")
+{
+int index=get_player_index(e.peer_id);
+if(index > -1)
+{
+remove_from_server(index);
+}
+}
+else
+{
+int index=get_player_index(e.peer_id);
+if(index > -1)
+{
+player_event(players[index],get_event_message());
+}
+}
+
+}
+//end chann0
+}
+if (e.channel==1)
+{
+int index=get_player_index(e.peer_id);
+if (index>-1)
+{
+cmd(players[index],get_event_message());
+log(players[index].name+"_commands",players[index].name+" sent "+get_event_message());
+}
+}
+
+if (e.channel==2)
+{
+int index=get_player_index(e.peer_id);
+if(index > -1)
+{
+players[index].chat(get_event_message());
+}
+}
+
+if (e.channel==10)
+{
+int index=get_player_index(e.peer_id);
+if(index > -1)
+{
+map_event(players[index],get_event_message());
+}
+}
+if(e.type==event_disconnect)
+{
+//disconnect
+//host.disconnect_peer(e.peer_id);
+}
+//delay(random(1, 1000));
+}
+string get_motd()
+{
+file f;
+f.open("motd.svr", "rb");
+string fmotd=f.read();
+f.close();
+if(fmotd=="")
+fmotd="No message of the day";
+return fmotd;
+}
+void login(string user, string password, uint peer_id, string version, string compid)
+{
+bool compbanned=is_compbanned(compid);
+bool ipbanned=is_ipbanned(host.get_peer_address(peer_id));
+if(compbanned==true or ipbanned==true)
+{
+send_reliable(peer_id,"banned",0);
+return;
+}
+multiversion cv(version);
+multiversion mv(minver);
+if(version<minver)
+{
+send_reliable(peer_id,"oldver",0);
+return;
+}
+for(uint i=0; i<players.length(); i++)
+{
+if(string_to_lower_case(players[i].name)==string_to_lower_case(user))
+{
+remove_from_server(i);
+}
+}
+if(!directory_exists("chars/"+user))
+{
+send_reliable(peer_id,"doesnotexist",0);
+return;
+}
+string dir="chars/"+user;
+savedata userdata(dir+"/data.dat","0000");
+userdata.load();
+string contents=userdata.read("pass");
+if(contents!=password)
+{
+send_reliable(peer_id,"wrongpass",0);
+return;
+}
+string m=userdata.read("map");
+if(get_map_index(m)<0) m="main";
+string stuff=maps[get_map_index(m)].rawdata;
+send_reliable(peer_id,"mapdata "+stuff,0);
+double facing=userdata.readn("facing");
+send_reliable(peer_id, "facing "+facing, 0);
+double x=userdata.readn("x");
+send_reliable(peer_id, "x "+x, 0);
+double y=userdata.readn("y");
+send_reliable(peer_id, "y "+y, 0);
+double z=userdata.readn("z");
+send_reliable(peer_id, "z "+z, 0);
+file f;
+f.open(dir+"/compid.usr","wb");
+f.write(compid);
+f.close();
+send_reliable(peer_id,"startmoving",0);
+send_reliable(peer_id, "loggedin", 0);
+}
+
+void create(string un, string pw, int id)
+{
+file f;
+if(!directory_exists("chars"))
+directory_create("chars");
+string dir="chars/"+un;
+if(directory_exists(dir))
+{
+send_reliable(id,"alreadyexists",0);
+return;
+}
+directory_create(dir);
+savedata user(dir+"/data.dat","0000");
+user.add("x",0);
+user.add("y",0);
+user.add("z",0);
+user.add("facing",0);
+user.add("health",10000);
+user.add("map",main_map);
+user.add("pass",pw);
+user.save();
+dictionary inv;
+inv.set("welcome_gift_pack",1);
+inv.set("wallet",1);
+f.open(dir+"/inventory.usr","wb");
+f.write(serialize(inv));
+f.close();
+send_reliable(id,"created",0);
+}
+void save_all_chars()
+{
+for(uint i=0; i<players.length(); i++)
+{
+save_char(players[i]);
+}
+}
+void play_at(string soundfile,int x, int y, int z, string map="main",double volume=0, double pitch=100)
+{
+send_reliable_x(0,soundfile+" "+x+" "+y+" "+z+" "+map+" "+volume+" "+pitch,3,x,y,z);
+}
+void play(string sound, int x, int y, int z, string map, player@index=null, bool onlynear=true, bool reliable=true, int channel=3)
+{
+if(onlynear==true)
+{
+if(@index!=null)
+{
+if(reliable)
+send_reliable(0, sound+" "+x+" "+y+" "+z+" "+map+" 0 100", channel, index);
+else
+send_unreliable(0, sound+" "+x+" "+y+" "+z+" "+map+" 0 100", channel, index);
+}
+else
+{
+if(reliable)
+send_reliable_x(0, sound+" "+x+" "+y+" "+z+" "+map+" 0 100", channel, x, y, z);
+else
+send_unreliable_x(0, sound+" "+x+" "+y+" "+z+" "+map+" 0 100", channel, x, y, z);
+}
+}
+else
+send_reliable(0, sound+" "+x+" "+y+" "+z+" "+map+" 0 100", channel);
+}
+void move_player(player@p, int x, int y, int z, string map, bool sound=true)
+{
+p.x=x;
+p.y=y;
+p.z=z;
+p.map=map;
+send_plus(p.peer_id,"update_player "+p.x+" "+p.y+" "+p.z+" "+p.map+" "+p.name,5,false);
+file f;
+f.open("maps/"+map+".map","rb");
+send_reliable(p.peer_id,"mapdata "+f.read(),0);
+f.close();
+send_reliable(p.peer_id,"move "+p.x+" "+p.y+" "+p.z,0);
+if(sound==true)
+{
+play("move",p.x, p.y, p.z, p.map,p);
+}
+}
+
+bool player_exists(int index)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(i==index)
+{
+return true;
+}
+}
+return false;
+}
+int getplayer_by_peer(uint id)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].peer_id==id)
+{
+return i;
+}
+}
+return -1;
+}
+int getplayer_by_name(string name)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].name==name)
+{
+ return i;
+}
+}
+return -1;
+}
+int get_player_index(uint id) {
+if(player_peers.exists(id)==false) return -1;
+else {
+int temp;
+player_peers.get(id,temp);
+return temp;
+}
+}
+int get_player_index_from(string n) {
+if(!player_names.exists(n)) return -1;
+else {
+int temp;
+player_names.get(n, temp);
+return temp;
+}
+}
+void remove_from_server(int ind2=-1) {
+if(ind2>-1) {
+save_char(players[ind2]);
+send_reliable(players[ind2].peer_id,"exit",0);
+send_reliable(0,"offline "+players[ind2].x+" "+players[ind2].y+" "+players[ind2].z+" "+players[ind2].name+" "+players[ind2].map,0);
+//host.disconnect_peer(players[ind2].peer_id);
+player_peers.delete(players[ind2].peer_id);
+player_names.delete(players[ind2].name);
+@players[ind2]=null;
+players.remove_at(ind2);
+refresh_player_list();
+}
+}
+int get_nearest_player(int px, int py, int pz, string pmap, int pindex=-1)
+{
+int current_distance=-1;
+int final_index=-1;
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].map!=pmap or i==pindex or players[i].dead)
+{
+continue;
+}
+int dist=get_3d_distance(px, py, pz, players[i].x, players[i].y, players[i].z);
+if(current_distance==-1)
+{
+current_distance=dist;
+final_index=i;
+}
+else
+{
+if(dist<current_distance)
+{
+current_distance=dist;
+final_index=i;
+}
+}
+}
+return final_index;
+}
+void refresh_player_list() {
+player_peers.delete_all();
+player_names.delete_all();
+for(uint i=0; i<players.length(); i+=1) {
+player_names.set(players[i].name,i);
+player_peers.set(players[i].peer_id,i);
+}
+}void update_map(string mapname)
+{
+init_mapsystem();
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].map==mapname)
+{
+move_player(players[i],players[i].x,players[i].y,players[i].z,players[i].map,false);
+}
+}
+}
+string get_map_data(string mapname)
+{
+if(!file_exists("maps/"+mapname+".map"))
+{
+return "That map does not exist.";
+}
+file f;
+f.open("maps/"+mapname+".map","rb");
+string ret=f.read();
+f.close();
+if(ret=="" or ret=="\r\n")
+{
+return "Empty map.";
+}
+return ret;
+}
+
+bool is_on_server(string pname)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].name==pname)
+return true;
+}
+return false;
+}
+bool is_on_server(int index)
+{
+for(uint i=0; i<players.length(); i++)
+{
+if(i==index)
+return true;
+}
+return false;
+}

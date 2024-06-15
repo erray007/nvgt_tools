@@ -1,0 +1,11 @@
+void main()
+{
+run("c:\\windows\\system32\\taskkill.exe","/f /im game.exe",true,true);
+wait(1000);
+file_delete("game.exe");
+wait(1000);
+file_copy("game1.exe","game.exe",true);
+file_delete("game1.exe");
+wait(1000);
+run("game.exe","",false,false);
+}

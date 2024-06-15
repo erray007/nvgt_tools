@@ -1,0 +1,174 @@
+void map_event(player@p,string event)
+{
+string[] parsed=string_split(event, " ", true);
+file f;
+if(parsed[0]=="addtp")
+{
+string maptext=string_replace(event,parsed[0]+" ","",false);
+f.open("maps/"+p.map+".map","rb");
+string mapdata=f.read();
+f.close();
+mapdata+="\r\n"+maptext;
+f.open("maps/"+p.map+".map","wb");
+f.write(mapdata);
+f.close();
+send_reliable(p.peer_id,"Map updated",0);
+update_map(p.map);
+}
+if(parsed[0]=="addtile")
+{
+string maptext=string_replace(event,parsed[0]+" ","",false);
+f.open("maps/"+p.map+".map","rb");
+string mapdata=f.read();
+f.close();
+mapdata+="\r\n"+maptext;
+f.open("maps/"+p.map+".map","wb");
+f.write(mapdata);
+f.close();
+send_reliable(p.peer_id,"Map updated",0);
+update_map(p.map);
+}
+if(parsed[0]=="addsrc")
+{
+string maptext=string_replace(event,parsed[0]+" ","",false);
+f.open("maps/"+p.map+".map","rb");
+string mapdata=f.read();
+f.close();
+mapdata+="\r\n"+maptext;
+f.open("maps/"+p.map+".map","wb");
+f.write(mapdata);
+f.close();
+send_reliable(p.peer_id,"Map updated",0);
+update_map(p.map);
+}
+if(parsed[0]=="addzone")
+{
+string maptext=string_replace(event,parsed[0]+" ","",false);
+f.open("maps/"+p.map+".map","rb");
+string mapdata=f.read();
+f.close();
+mapdata+="\r\n"+maptext;
+f.open("maps/"+p.map+".map","wb");
+f.write(mapdata);
+f.close();
+send_reliable(p.peer_id,"Map updated",0);
+update_map(p.map);
+}
+if(parsed[0]=="new2dmap" and parsed.length()>6)
+{ 
+string mapname=parsed[1];
+if(map_exists(mapname))
+{
+send_reliable(p.peer_id,"this map already exists",0);
+return;
+}
+if(string_contains(mapname,"house_of_",1)>-1)
+{
+send_reliable(p.peer_id,"error: please change the map name",0);
+return;
+}
+int minx=string_to_number(parsed[2]);
+int maxx=string_to_number(parsed[3]);
+int minz=string_to_number(parsed[4]);
+int maxz=string_to_number(parsed[5]);
+string platform=parsed[6];
+string vl=parsed[7];
+string owner=p.name;
+int litem=1;
+string data="mapname:"+mapname+"\r\nowner:"+owner+"\r\ninterior:0\r\ncontributor:"+p.name+"\r\nminx:"+minx+"\r\nmaxx:"+maxx+"\r\nminz:"+minz+"\r\nmaxz:"+maxz+"\r\nis2d:1platform:"+minx+":"+maxx+":"+0+":"+0+":0:0:"+platform+":"+vl+":\r\n";
+f.open("maps/"+mapname+".map","wb");
+f.write(data);
+f.close();
+init_mapsystem();
+update_map(mapname);
+p.map=mapname;
+move_player(p, 0, 0, 0, mapname);send_reliable(p.peer_id,"your map has been created successfully, you can write /build to edit your map",2);
+if(string_contains(mapname,"house_of_",1)<0 and string_contains(mapname,"store_of_",1)<0) file_put_contents("chars/"+p.name+"/maps.usr",""+mapname+"\r\n",255);
+send_reliable(p.peer_id,"your map has been created successfully, you can write /build to edit your map",2);
+}
+if(parsed[0]=="newmap" and parsed.length()>7)
+{ 
+string mapname=parsed[1];
+if(map_exists(mapname))
+{
+send_reliable(p.peer_id,"this map already exists",0);
+return;
+}
+if(string_contains(mapname,"house_of_",1)>-1)
+{
+send_reliable(p.peer_id,"error: please change the map name",0);
+return;
+}
+int minx=string_to_number(parsed[2]);
+int maxx=string_to_number(parsed[3]);
+int miny=string_to_number(parsed[4]);
+int maxy=string_to_number(parsed[5]);
+int minz=string_to_number(parsed[6]);
+int maxz=string_to_number(parsed[7]);
+string platform=parsed[8];
+string vl=parsed[9];
+string owner=p.name;
+int litem=1;
+string data="mapname:"+mapname+"\r\nowner:"+owner+"\r\ninterior:0\r\ncontributor:"+p.name+"\r\nminx:"+minx+"\r\nmaxx:"+maxx+"\r\nminy:"+miny+"\r\nmaxy:"+maxy+"\r\nminz:"+minz+"\r\nmaxz:"+maxz+"\r\nplatform:"+minx+":"+maxx+":"+miny+":"+maxy+":0:0:"+platform+":"+vl;
+f.open("maps/"+mapname+".map","wb");
+f.write(data);
+f.close();
+init_mapsystem();
+update_map(mapname);
+p.map=mapname;
+move_player(p, 0, 0, 0, mapname);
+send_reliable(p.peer_id,"your map has been created successfully, you can write /build to edit your map",2);
+}
+else if(parsed[0]=="setmap"&&parsed.length()>1&&p.is_admin()==true)
+{
+string mapname=p.map;
+string mapdata=string_trim_left(get_event_message(),7);
+string[] lines=string_split(mapdata,"\r\n",false);
+for(uint i=0; i<lines.length(); i++)
+{
+string[] ld=string_split(lines[i],":",false);
+if(ld.length()<2)
+{
+send_reliable(e.peer_id,"update error: all map commands take at least one argument",2);
+return;
+}
+else if(ld[0]=="mapname"&&ld[1]!=mapname)
+{
+send_reliable(e.peer_id,"update error: map names do not match",2);
+return;
+}
+else if(ld[0]=="minx"&&ld.length()!=2)
+{
+send_reliable(e.peer_id,"missing parameter entered. Please check "+lines[i]+"line",2);
+return;
+}
+else if(ld[0]=="ispawn" and ld.length()<9)
+{
+send_reliable(e.peer_id,"update error: item spawn declaration on line "+i+" has too few arguments. Syntax is ispawn:minx:maxx:miny:maxy:minz:maxz:time:maxobjs, got "+lines[i],2);
+return;
+}
+else if(ld[0]=="platform" and ld.length()<9)
+{
+send_reliable(e.peer_id,"update error: declaration of tile on line "+i+" has too few arguments. Syntax is tile:minx:maxx:miny:maxy:minz:maxz:type:pitch, got "+lines[i],2);
+return;
+}
+else if(ld[0]=="zone" and ld.length()<8)
+{
+send_reliable(e.peer_id,"update error: declaration of zone on line "+i+" has too few arguments. Syntax is zone:minx:maxx:miny:maxy:minz:maxz:text[:trackme], got "+lines[i],2);
+return;
+}
+else if(ld[0]=="src" and ld.length()<11)
+{
+send_reliable(e.peer_id,"update error: declaration of source on line "+i+" has too few arguments. Syntax is src:minx:maxx:miny:maxy:minz:maxz:sound:volume:pitch:amb, got "+lines[i],2);
+return;
+}
+}
+file f;
+f.open("maps/"+mapname+".map","wb");
+f.write(mapdata);
+f.close();
+update_map(p.map);
+send_reliable(p.peer_id,"done",0);
+}
+//end
+}

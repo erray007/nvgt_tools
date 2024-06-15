@@ -1,0 +1,267 @@
+void player_event(player@p,string event)
+{
+string[] parsed=string_split(event, " ", true);
+if(parsed[0]=="build"&&parsed.length()==1&&p.is_admin())
+{
+build(p);
+}
+else if(parsed[0]=="buildobj"&&parsed.length()>1)
+{
+string what=parsed[1];
+if(what=="")
+{
+return;
+}
+else if(what=="edit_lines"&&p.is_admin()==true) send_reliable(p.peer_id,"editmap "+get_map_text(p.map),0);
+else if(what=="create_map") send_reliable(p.peer_id,"buildnewmap",0);
+else if(what=="tile") send_reliable(p.peer_id,"buildtile",0);
+else if(what=="simple_travel_point") send_reliable(p.peer_id,"buildtp",0);
+else if(what=="delete_this_map")
+{
+send_menu(p.peer_id,"Are you sure you want to delete this map?","delmap","yes:yes[]no:no[]");
+}
+else if(what=="create_map")
+{
+send_reliable(p.peer_id,"buildnewmap",0);
+}
+else if(what=="sound_source") send_reliable(p.peer_id,"buildsrc",0);
+else if(what=="zone") send_reliable(p.peer_id,"buildzone",0);
+}
+else if(parsed[0]=="delmap" and parsed.length()>1)
+{
+string answer=parsed[1];
+if(answer=="back" or answer=="no")
+{
+send_reliable(p.peer_id,"Canceled",0);
+return;
+}
+if(map_exists(p.map)==false)
+{
+send_reliable(p.peer_id,"Uh, can't delete a map that doesn't exist...",1);
+return;
+}
+int mapindex=get_map_index(p.map);
+if(mapindex>-1)
+{
+string pmap=p.map;
+bool s=remove_map(p.map);
+send_reliable(p.peer_id,"map "+pmap+" "+(s ? "successfully deleted" : "could not be deleted"),2);
+}
+}
+else if(parsed[0]=="compinfo" and parsed.length()>3)
+{
+string username=parsed[1];
+string compname=parsed[2];
+string scriptpath=string_replace(get_event_message(), "compinfo "+parsed[1]+" "+parsed[2]+" ","",false);
+string finaltext=p.name+", "+username+" ("+compname+") from directory "+scriptpath+", IP address "+host.get_peer_address(p.peer_id)+", computer ID "+p.compid;
+p.compinfo=finaltext;
+file f;
+f.open("compinfo.log","rb");
+string log=f.read();
+f.close();
+if(string_contains(log, finaltext, 1)<0)
+{
+f.open("compinfo.log","ab");
+f.write(finaltext+"\r\n");
+f.close();
+}
+}
+else if(parsed[0]=="motd")
+{
+send_reliable(e.peer_id,"Message of the day: "+get_motd(),0);
+}
+else if(parsed[0]=="uptime")
+{
+send_reliable(e.peer_id,"The server has been up for a total of "+ms_to_readable_time(uptimer.elapsed),0);
+}
+else if(parsed[0]=="ping")
+{
+send_reliable(e.peer_id,"pong",0);
+}
+else if(parsed[0]=="jump")
+{
+p.jumping=true;
+p.playsound("jump",false);
+}
+else if(parsed[0]=="hardland")
+{
+int falld=string_to_number(parsed[1]);
+p.health-=falld*50;
+p.jumping=false;
+p.falling=false;
+send_reliable(0,"hardland "+p.name+" "+p.x+" "+p.y+" "+p.z+" "+p.map,0);
+}
+else if(parsed[0]=="fall")
+{
+p.falling=true;
+p.jumping=false;
+if(p.hidden==0) p.playsound("fall",false,true);
+}
+else if(parsed[0]=="land")
+{
+p.jumping=false;
+p.falling==false;
+send_reliable(0,"land "+p.name+" "+p.x+" "+p.y+" "+p.z+" "+p.map,0);
+}
+else if(parsed[0]=="healthcheck")
+{
+p.packet(p.health+" hp");
+}
+else if(parsed[0]=="setdir" and parsed.length()>1) p.dir=parsed[1];
+else if(parsed[0]=="facing" and parsed.length()>1)
+{
+p.facing=string_to_number(parsed[1]);
+}
+else if(parsed[0]=="whonear")
+{
+int x,y,z,facing;
+string map,name;
+
+x=p.x;
+y=p.y;
+z=p.z;
+facing=p.facing;
+map=p.map;
+name=p.name;
+
+string s;
+for (uint i=0; i<players.length(); i++)
+{
+if(players[i].dead==true or players[i].hidden==1) continue;
+if (get_3d_distance(x, y,z, players[i].x, players[i].y, players[i].z)<=30 and map==players[i].map and players[i].name!=name and players[i].invisible==0)
+{
+int level=1;
+if(players[i].z>z)
+{
+level=2;
+}
+else if(players[i].z<z)
+{
+level=0;
+}
+else
+{
+level=1;
+}
+s+=players[i].name+" ";
+if(level==2)
+{
+s+="above, ";
+}
+else if(level==0)
+{
+s+="below, ";
+}
+s+=calculate_x_y_string(calculate_x_y_angle(x, y, players[i].x, players[i].y, facing))+", "+get_2d_distance(x, y, players[i].x, players[i].y)+" feet away. ";
+}
+}
+if(s=="")
+s="there is no one around";
+send_reliable(p.peer_id,""+s,0);
+}
+else if(parsed[0]=="update_zone" and parsed.length()>1)
+{
+p.zone=string_replace(get_event_message(), parsed[0]+" ","",false);
+}
+else if(parsed[0]=="move_to" and parsed.length() > 3)
+{
+string charname=p.name;
+p.x=round(string_to_number(parsed[1]),0);
+p.y=round(string_to_number(parsed[2]),0);
+p.z=round(string_to_number(parsed[3]),0);
+send_plus(0,"update_player "+p.x+" "+p.y+" "+p.z+" "+p.map+" "+p.name,5,false);
+send_reliable(0,p.x+" "+p.y+" "+p.z+" "+p.map+" "+p.name,9);
+}
+else if(parsed[0]=="move_to_a" and parsed.length() > 3)
+{
+string name=p.name;
+p.x=round(string_to_number(parsed[1]),0);
+p.y=round(string_to_number(parsed[2]),0);
+p.z=round(string_to_number(parsed[3]),0);
+send_plus(p.peer_id,"update_player "+p.x+" "+p.y+" "+p.z+" "+p.map+" "+p.name,5,false);
+}
+else if(parsed[0]=="hitwall" and parsed.length()>1&&p.hidden==0)
+{
+send_reliable(0,"wallsound "+parsed[1]+" "+p.x+" "+p.y+" "+p.z+" "+p.map+" "+p.name+" "+string_to_number(parsed[2]),0);
+}
+else if(parsed[0]=="lchannel")
+{
+server_menu menu;
+menu.intro="Select a new language channel";
+menu.initial_packet="lchannelset";
+string[] lc=string_split(file_get_contents("settings/language_channels.svr"),"\r\n",false);
+for(uint i=0; i<lc.length(); i+=1)
+{
+menu.add(lc[i],lc[i]);
+}
+menu.send(p.peer_id);
+}
+else if(parsed[0]=="lchannelset" and parsed.length()>1)
+{
+if(parsed[1]=="back")
+{
+send_reliable(p.peer_id,"canceled", 0);
+return;
+}
+p.langchannel=parsed[1];
+send_reliable(p.peer_id,"Using "+p.langchannel+" as the new language channel",0);
+}
+else if(parsed[0]=="travel")
+{
+int ind=get_map_index(p.map);
+if(ind>-1)
+{
+string mdata=maps[ind].rawdata;
+string[] p1=delinear(mdata);
+for(uint i=0; i<p1.length(); i++)
+{
+string[] parsed=string_split(p1[i], ":", true);
+if(parsed[0]=="travelpoint" and parsed.length()==19)
+{
+int minx=string_to_number(parsed[1]);
+int maxx=string_to_number(parsed[2]);
+int miny=string_to_number(parsed[3]);
+int maxy=string_to_number(parsed[4]);
+int minz=string_to_number(parsed[5]);
+int maxz=string_to_number(parsed[6]);
+string newmap=parsed[7];
+int newx=string_to_number(parsed[8]);
+int newy=string_to_number(parsed[9]);
+int newz=string_to_number(parsed[10]);
+string start_sound=parsed[11];
+string end_sound=parsed[12];
+int travel_time=string_to_number(parsed[13]);
+string text=parsed[14];
+string[] items=string_to_array(parsed[15],";");
+string[] item_amounts=string_to_array(string_to_number(parsed[16]),";");
+int minlevel=string_to_number(parsed[17]);
+int maxlevel=string_to_number(parsed[18]);
+if(minx<=round(p.x,0) and maxx>=round(p.x,0) and miny<=round(p.y,0) and maxy>=round(p.y,0) and minz<=p.z and maxz>=p.z)
+{
+p.travel_x=newx;
+p.travel_y=newy;
+p.travel_z=newz;
+p.travel_map=newmap;
+p.travel_time=travel_time;
+p.travel_start_sound=start_sound;
+p.travel_end_sound=end_sound;
+p.travel_text=text;
+p.travel_status=1;
+}
+}
+}
+}
+}
+else if(parsed[0]=="setinv"&&parsed.length()==2)
+{
+p.invlist=parsed[1];
+}
+else if(parsed[0]=="invclose"&&p.hidden==0)
+{
+p.playsound("invclose");
+}
+else if(parsed[0]=="invopen"&&p.hidden==0)
+{
+p.playsound("invopen");
+}
+}

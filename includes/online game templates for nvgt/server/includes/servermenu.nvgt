@@ -1,0 +1,39 @@
+//online menus.
+class server_menu
+{
+bool wrap;
+int channel=0;
+string[] menuitems;
+string[] menuids;
+string initial_packet;
+string intro;
+void add(string item,string id)
+{
+menuitems.insert_last(item);
+menuids.insert_last(id);
+}
+void reset()
+{
+menuids.resize(0);
+menuitems.resize(0);
+channel=0;
+}
+void send(uint id)
+{
+if(menuids.length()>0 and menuitems.length()>0)
+{
+string l;
+for(uint i=0; i<menuitems.length(); i++)
+{
+l+=menuitems[i]+":"+menuids[i]+"[]";
+}
+send_menu(id,intro,initial_packet,l,channel);
+}
+}
+}
+void send_menu(int id, string menuintro, string text, string items,int channel=0)
+{
+menuintro=string_replace(menuintro," ","[SPCE]",true);
+text=string_replace(text, " ", "[SPCE", true);
+send_reliable(id,"launchmenu "+menuintro+" "+text+" "+channel+" "+items,0);
+}

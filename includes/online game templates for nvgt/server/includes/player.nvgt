@@ -1,0 +1,397 @@
+dictionary player_peers,player_names;
+player@[] players(0);
+class player
+{
+int x,y,z,travel_x,travel_y,travel_z;
+int invisible=0,sleeping=0,pacifist=0;
+int travel_status=0;
+int travel_time;
+string travel_start_sound,travel_end_sound;
+string travel_text,error_text;
+timer travel_timer,waitingtimer;
+bool teleporting=false,bike=false,jumping=false,falling=false;
+string map,travel_map,tempmap,zone,password,dir;
+string name;
+uint peer_id;
+bool dev=false,admin=false;
+bool dead=false;
+string compid;
+string compinfo;
+string title;
+double health=10000;
+double facing=0.0;
+string lang,langchannel;
+timer message;
+string muted;
+int hidden=0;
+string invlist;
+dictionary inv;
+timer inv_timer;
+bool giving=false;
+player(int px, int py, int pz, string pmap, string pname, int ppeer_id)
+{
+map=pmap;
+x=px;
+y=py;
+z=pz;
+name=pname;
+peer_id=ppeer_id;
+}
+bool is_admin()
+{
+if(this.admin or this.dev)
+{
+return true;
+}
+return false;
+}
+bool is_muted(string name)
+{
+string[] t=string_split(this.muted,"\r\n",false);
+for (uint i=0; i<t.length(); i++)
+{
+if (t[i]==name)
+{
+return true;
+}
+}
+return false;
+}
+void mute(string name)
+{
+this.muted+="\r\n"+name;
+}
+bool unmute(string name)
+{
+string[] t=string_split(this.muted,"\r\n",false);
+string newmuted;
+bool succeeded=false;
+for (uint i=0; i<t.length(); i++)
+{
+if (t[i]!=name)
+newmuted+="\r\n"+t[i];
+else
+succeeded=true;
+}
+this.muted=newmuted;
+return succeeded;
+}
+void chat(string message)
+{
+/*
+if(this.feature_is_disabled("chat")==true)
+{
+send_reliable(this.peer_id,"executives are telling you to shut the fuck up",2);
+return;
+}
+if(is_compjailed(this.compid)==true)
+{
+send_reliable(this.peer_id,"prisoners can never speak",2);
+return;
+}
+*/
+if(this.message.elapsed<2000)
+{
+send_reliable(this.peer_id,"please wait "+ms_to_readable_time(2000-this.message.elapsed),2);
+return;
+}
+//spammedmsgs++;
+this.message.restart();
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].langchannel!="disable_chat"&&players[i].langchannel==langchannel&&players[i].is_muted(name)==false)
+{
+send_reliable(players[i].peer_id,name+": "+message,1);
+send_reliable(players[i].peer_id,"play_s chat.ogg 0 100",0);
+}
+}
+}
+void packet(const string pkt,const int chan=2,const bool r=true) {
+if(r)
+send_reliable(this.peer_id,pkt,chan);
+else
+send_unreliable(this.peer_id,pkt,chan);
+}
+void playsound(string sound, bool include_me=true,bool SendReliable=true,double volume=0, double pitch=100)
+{
+if(include_me)
+{
+if(SendReliable==true) send_reliable(peer_id,"play_s "+sound+".ogg "+volume+" "+pitch,0);
+else if(SendReliable==false) send_unreliable(peer_id,"play_s "+sound+".ogg "+volume+" "+pitch,0);
+}
+send_plus(peer_id, sound+" "+x+" "+y+" "+z+" "+map+" "+volume+" "+pitch, 3,false);
+}
+void play_death_sound()
+{
+//play("guy"+this.guy+"death",this.x,this.y,this.z,this.map);
+}
+string get_inv(bool showall=true)
+{
+string ss;
+string[] ds;
+if(inv.get_size()==0) return "";
+ds=inv.get_keys();
+for(uint i=0; i<ds.length(); i++)
+{
+double val;
+inv.get(ds[i],val);
+ss+=ds[i]+"="+val+"\r\n";
+}
+return ss;
+}
+double inv_item_number(string item)
+{
+if(!this.inv.exists(item))
+{
+return 0;
+}
+double ret;
+this.inv.get(item,ret);
+if(ret<0)
+{
+this.inv.delete(item);
+return 0;
+}
+return ret;
+}
+
+void send_negated_inv()
+{
+inv.delete_all();
+}
+void give(string item, double amount,bool singlegive=true, bool playing=true,bool starting=false)
+{
+double a;
+if (!inv.exists(item))
+{
+inv.set(item,amount);
+}
+else
+{
+inv.get(item,a);
+if (a+amount<=0)
+{
+inv.delete(item);
+//delete_inv_list(item);
+}
+else
+{
+double b=(a+amount);
+//inv.delete(item);
+inv.set(item,b);
+}
+}
+this.neg_inv_check();
+if(singlegive)
+{
+send_reliable(this.peer_id,"inventory "+string_compress(dict_to_ini(this.inv)),0);
+this.giving=true;
+this.inv_timer.restart();
+if(amount>0)
+{
+add_inv_list(item);
+}
+}
+if(playing==true and amount>0)
+{
+this.playsound("get");
+
+}
+}
+void neg_inv_check()
+{
+string[] k=inv.get_keys();
+for(uint i=0; i<k.length(); i++)
+{
+double v;
+inv.get(k[i],v);
+if(v<1) inv.delete(k[i]);
+}
+}
+bool inv_item_exists(string itemname)
+{
+if(this.inv.exists(itemname))
+{
+return true;
+}
+return false;
+}
+void add_inv_list(string item)
+{
+string d;
+string[] items=string_split(invlist, "\r\n", false);
+//netloop();
+int number=items.find(item);
+if(number>-1)
+{
+return;
+}
+else
+{
+items.insert_last(item);
+for(int i=0; i<items.length(); i++)
+d+="\r\n"+items[i];
+this.invlist=d;
+//send_reliable(this.peer_id,"invlist "+this.invlist,0);
+}
+//saveplayerdata(this);
+}
+void ploop()
+{
+if(this.travel_status==1)
+{
+int mi=get_map_index(this.travel_map);
+if(mi>-1)
+{
+
+if(hour<maps[mi].minhour or hour>maps[mi].maxhour)
+{
+send_reliable(this.peer_id,""+maps[mi].name+" is currently closed. Opening hours: "+maps[mi].minhour+" until "+maps[mi].maxhour+".",2);
+this.travel_status=0;
+this.travel_map=this.map;
+this.travel_x=this.x;
+this.travel_y=this.y;
+this.travel_z=this.z;
+this.teleporting=false;
+send_reliable(this.peer_id,"startmoving",0);
+return;
+}
+/*
+if(maps[mi].star>this.re)
+{
+send_reliable(this.peer_id,"you need "+maps[mi].star+" stars to continue the "+this.travel_map+"map! ",2);
+this.travel_status=0;
+this.travel_map=this.map;
+this.travel_x=this.x;
+this.travel_y=this.y;
+this.travel_z=this.z;
+this.teleporting=false;
+send_reliable(this.peer_id,"startmoving",0);
+return;
+}
+if(this.inv_item_amount(maps[mi].item)<maps[mi].item_amount)
+{
+send_reliable(this.peer_id,"you need "+maps[mi].item_amount+", "+maps[mi].item+" items to continue the "+this.travel_map+"map! ",2);
+this.travel_status=0;
+this.travel_map=this.map;
+this.travel_x=this.x;
+this.travel_y=this.y;
+this.travel_z=this.z;
+this.teleporting=false;
+send_reliable(this.peer_id,"startmoving",0);
+return;
+}
+*/
+else
+{
+this.travel_timer.restart();
+this.travel_status=2;
+send_reliable(this.peer_id,"stopmoving",0);
+if(this.teleporting==true) this.playsound("teleporter1");
+else this.playsound(this.travel_start_sound);
+}
+}
+else if(mi<0)
+{
+send_reliable(this.peer_id,"Map "+this.travel_map+" does not exist",2);
+this.travel_status=0;
+this.travel_map=this.map;
+this.travel_x=this.x;
+this.travel_y=this.y;
+this.travel_z=this.z;
+send_reliable(this.peer_id,"startmoving",0);
+this.teleporting=false;
+return;
+}
+}
+if(this.travel_status==2)
+{
+int mi=get_map_index(this.travel_map);
+if(mi>-1)
+{
+if(this.travel_time==0 or this.travel_timer.elapsed>this.travel_time and this.travel_map!="")
+{
+this.x=this.travel_x;
+this.y=this.travel_y;
+this.z=this.travel_z;
+if(this.map!=this.travel_map) this.map=this.travel_map;
+move_player(this,this.x,this.y,this.z,this.map,false);
+if(this.travel_text!="")
+{
+send_reliable(this.peer_id, this.travel_text, 2);
+}
+send_reliable(this.peer_id,"startmoving",0);
+this.playsound(this.travel_end_sound);
+this.travel_status=0;
+this.travel_x=this.x;
+this.travel_y=this.y;
+this.travel_z=this.z;
+this.travel_map=this.map;
+this.travel_time=0;
+this.travel_text="";
+this.travel_start_sound="";
+this.travel_end_sound="";
+}
+}
+else send_reliable(this.peer_id,"unable to load map!",2);
+}
+//travel end
+if(this.health<=0 and this.dead==false)
+{
+this.health=1000;
+save_char(this);
+this.play_death_sound();
+send_reliable(0,"play_s kill.ogg",0);
+send_reliable(this.peer_id,"die",0);
+spawn_bodyfall(this.x,this.y,this.z,this.map,this.name);
+this.dead=true;
+}
+}
+//end class
+}
+void spawn_player(int x, int y, int z, string map, string name,int pi)
+{
+player p1(x,y,z,map,name,pi);
+players.insert_last(p1);
+send_reliable(0, "online "+x+" "+y+" "+z+" "+name+" "+map, 0);
+}
+string[] nearest_player_sorted_array(player@ p)
+{
+pld@[] t;
+for(uint i=0; i<players.length(); i++)
+{
+if(players[i].name==p.name||players[i].dead||p.map!=players[i].map) continue;
+pld temp(p,players[i]);
+t.insert_last(temp);
+}
+string[] blankret;
+if(t.is_empty()) return blankret;
+t.sort_descending();
+string[] names;
+for(uint i=0; i<t.length(); i++)
+{
+names.insert_last(players[t[i].index].name);
+}
+return names;
+}
+
+class pld
+{
+double tx,ty,tz;
+double sx,sy,sz;
+double dist;
+int index;
+pld(player@ p1, player@ p2)
+{
+sx=p1.x;sy=p1.y;sz=p1.z;
+tx=p2.x;ty=p2.y;tz=p2.z;
+index=get_player_index_from(p2.name);
+dist=get_3d_distance(sx,sy,sz,tx,ty,tz);
+}
+int opCmp(pld@ o)
+{
+if(o.dist<dist) return -1;
+if(o.dist>dist) return 1;
+return 0;
+}
+}

@@ -1,0 +1,34 @@
+bodyfall@[] bodyfalls(0);
+class bodyfall
+{
+int btime=3000;
+int x, y, z;
+string map,name;
+timer btimer;
+bodyfall(int bx, int by, int bz, string bmap, string bname,int bodytime=3000)
+{
+x=bx;
+y=by;
+z=bz;
+map=bmap;
+name=bname;
+btime=bodytime;
+}
+}
+void bodyfallloop()
+{
+for (uint i=0; i<bodyfalls.length(); i++)
+{
+if (bodyfalls[i].btimer.elapsed>=bodyfalls[i].btime)
+{
+send_reliable(0,"fall "+bodyfalls[i].name+" "+bodyfalls[i].x+" "+bodyfalls[i].y+" "+bodyfalls[i].z+" "+bodyfalls[i].map,0);
+bodyfalls.remove_at(i);
+break;
+}
+}
+}
+void spawn_bodyfall(int x, int y, int z, string map, string name,int time=30)
+{
+bodyfall b1(x,y,z,map,name, time);
+bodyfalls.insert_last(b1);
+}

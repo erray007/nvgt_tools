@@ -1,0 +1,34 @@
+mapitem@[]mapitems(0);
+class mapitem
+{
+int x,y,z;
+string map;
+int id=-1;
+int mapitemsound;
+timer beeptimer;
+mapitem(int ix,int iy,int iz,string imap, int iid)
+{
+x=ix;
+y=iy;
+z=iz;
+map=imap;
+id=iid;
+}
+}
+void spawn_mapitem(int x,int y, int z, string map,int id)
+{
+mapitem i1(x,y,z,map,id);
+mapitems.insert_last(i1);
+}
+void remove_mapitem(int id)
+{
+for(uint i=0; i<mapitems.length(); i++)
+{
+if(mapitems[i].id==id)
+{
+@mapitems[i]=null;
+mapitems.remove_at(i);
+break;
+}
+}
+}

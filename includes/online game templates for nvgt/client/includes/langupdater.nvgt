@@ -1,0 +1,65 @@
+void scheck_lang_update()
+{
+
+string lang_version=0.0;
+string current_lang_version=lang_version;
+file f;
+f.open("lang/langver.txt","rb");
+current_lang_version=f.read();
+f.close();
+
+string new_lang_version=url_get(webdir+"/game/langver.txt");
+string update_error_reason=url_get(webdir+"/game/update_error_reason.txt");
+if(new_lang_version=="" or new_lang_version=="0" or string_contains(new_lang_version," ",1)!=-1 or string_contains(new_lang_version,"html",1)!=-1 or new_lang_version.length()<2 or new_lang_version.length()>5)
+{
+
+speak("unable to check the update, reason, "+update_error_reason+".");
+}
+if(current_lang_version!=new_lang_version)
+{
+
+dlg("There is a new update available for language pack, your version, "+current_lang_version+", latest version, "+new_lang_version+".");
+langupdate();
+}
+}
+void check_lang_update()
+{
+speak("checking language pack update");
+string lang_version=0.0;
+string current_lang_version=lang_version;
+file f;
+f.open("lang/langver.txt","rb");
+current_lang_version=string_to_number(f.read());
+f.close();
+string new_lang_version=url_get(webdir+"/tw/langver.txt");
+string update_error_reason=url_get(webdir+"/tw/update_error_reason.txt");
+if(new_lang_version=="" or new_lang_version=="0" or string_contains(new_lang_version," ",1)!=-1 or string_contains(new_lang_version,"html",1)!=-1 or new_lang_version.length()<2 or new_lang_version.length()>5)
+{
+speak("unable to check the update, reason, "+update_error_reason+".");
+}
+if(new_lang_version==current_lang_version)
+{
+speak("this is the latest version of the language pack, version "+new_lang_version+"");
+}
+if(current_lang_version<new_lang_version)
+{
+dlg("There is a new update available for language pack, your version, "+current_lang_version+", latest version, "+new_lang_version+".");
+langupdate();
+}
+}
+void langupdate()
+{
+string version=ver;
+//show_game_window("updating game from version "+version+", to version "+latest_version+", please wait");
+speak("update starting");
+
+string status=dl_file(webdir+"/game/lang.zip","lang.zip");
+if(status=="finished")
+{
+speak("update complated. Please wait extracting the files");
+wait(2000);
+run("unzip.exe", "-o -qq lang.zip", false, false);
+run("stww.exe","",false,false);
+exit();
+}
+}
