@@ -88,7 +88,7 @@ if(parsed[0]=="ping")
 {
 send_reliable(e.peer_id,"pong",0);
 }
-else if(parsed[0]=="login" and parsed.length() > 4)
+else if(parsed[0]=="login" and parsed.length()==4)
 {
 login(parsed[1], parsed[2], e.peer_id, parsed[3], parsed[4]);
 }
